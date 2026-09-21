@@ -210,6 +210,8 @@ function bandResult(b){
 }
 const r2=x=>x==null?null:Math.round(x*100)/100;
 const r3=x=>x==null?null:Math.round(x*1000)/1000;
+const f2=x=>x==null?'—':(Math.round(x*100)/100).toFixed(2);
+const f3=x=>x==null?'—':(Math.round(x*1000)/1000).toFixed(3);
 function rankBy(arr,getter){ // RANK.EQ（降順・同点同順位）
   return arr.map(o=>1+arr.filter(p=>getter(p)>getter(o)).length);
 }
@@ -276,12 +278,12 @@ function render(){
               <td class="c-rank">${r.finalRank}</td>
               <td class="c-team"><span class="caret">▶</span><span class="c-no">${String(r.band.no).padStart(2,'0')}</span>　${r.band.name}${tie?'<span class="tieflag">⚠</span>':''}</td>
               <td class="c-div">${r.band.division}</td>
-              <td><span class="sc">${r2(r.efc).toFixed(2)}<span class="rk">${r.efcRank}位</span></span></td>
-              <td><span class="sc">${r2(r.vis).toFixed(2)}<span class="rk">${r.visRank}位</span></span></td>
-              <td><span class="sc">${r2(r.mus).toFixed(2)}<span class="rk">${r.musRank}位</span></span></td>
+              <td><span class="sc">${f2(r.efc)}<span class="rk">${r.efcRank}位</span></span></td>
+              <td><span class="sc">${f2(r.vis)}<span class="rk">${r.visRank}位</span></span></td>
+              <td><span class="sc">${f2(r.mus)}<span class="rk">${r.musRank}位</span></span></td>
               <td><button class="cg-toggle ${r.hasCG?'yes':'no'}" data-cg="${r.band.id}">${r.hasCG?'有':'無'}</button></td>
               <td><input class="pen-in" type="number" min="0" step="0.1" data-pen="${r.band.id}" value="${r.pen||''}" placeholder="0"></td>
-              <td class="c-final">${r3(r.final).toFixed(3)}</td>
+              <td class="c-final">${f3(r.final)}</td>
               <td><span class="prize ${pz.cls}">${pz.label}</span></td>
             </tr>
             <tr class="detail-row" data-detail="${r.band.id}"><td colspan="10"><div class="detail">${detailHTML(r)}</div></td></tr>`;
@@ -340,7 +342,7 @@ function detailHTML(r){
     }).join('');
     return `<div class="fam-card">
       <div class="fam-head"><span class="fam-name">${f.label}</span>
-      <span class="fam-sub">${r2(f.sub).toFixed(2)}<small>${f.rank}位</small></span></div>
+      <span class="fam-sub">${f2(f.sub)}<small>${f.rank}位</small></span></div>
       ${rows}<p class="fam-note">${f.note}</p></div>`;
   }).join('')}</div>`;
 }
@@ -384,7 +386,7 @@ function exportCSV(){
   sorted.forEach(r=>{
     const row=[r.finalRank,r.band.no,r.band.division,r.band.category,r.band.name];
     caps.forEach(c=>{const rv=rawVals(judgeByCap(c).id,r.band.id);const t=jTtl(judgeByCap(c).id,r.band.id);row.push(rv&&rv[0]!=null?rv[0]:'',rv&&rv[1]!=null?rv[1]:'',t!=null?r2(t).toFixed(2):'');});
-    row.push(r2(r.efc).toFixed(2),rmap[r.band.id].efc,r2(r.vis).toFixed(2),rmap[r.band.id].vis,r2(r.mus).toFixed(2),rmap[r.band.id].mus,
+    row.push(r.efc==null?'':r2(r.efc).toFixed(2),rmap[r.band.id].efc,r.vis==null?'':r2(r.vis).toFixed(2),rmap[r.band.id].vis,r.mus==null?'':r2(r.mus).toFixed(2),rmap[r.band.id].mus,
       r3(r.sub).toFixed(3),r.hasCG?'有':'無',r.pen||0,r3(r.final).toFixed(3),r.finalRank,prizeOf(r.band.division,r.final).label);
     rows.push(row);
   });
@@ -504,7 +506,7 @@ async function fetchScores(){
     const res=await fetch(scoresURL); if(!res.ok)throw new Error('HTTP '+res.status);
     SCORES=(await res.json())||{}; liveOK=true; lastFetch=Date.now();
   }catch(e){ liveOK=false; }
-  render();
+  try{ render(); }catch(e){ console.error('render error:',e); }
 }
 async function boot(){
   wrap.innerHTML='<div style="padding:64px 22px;text-align:center;color:#8b96ad;font-family:var(--body)">設定を読み込み中…</div>';
