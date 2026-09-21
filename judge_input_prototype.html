@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>審査員入力 — 2025 YOKOHAMA Final</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --field:#0e1320; --panel:#161d2e; --panel-2:#1d2740; --line:#2a3650;
+    --ink:#eef2fb; --muted:#8b96ad; --gold:#f2b03d; --gold-dim:#9c7327;
+    --signal:#5fd0c5; --danger:#e8705a;
+    --display:'Oswald','Arial Narrow',system-ui,sans-serif;
+    --body:'Inter',system-ui,-apple-system,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:var(--field);
+    background-image:radial-gradient(120% 70% at 50% -10%, #1a2440 0%, var(--field) 55%);
+    color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;
+  }
+  .app{
+    max-width:440px;margin:0 auto;height:100vh;height:100dvh;
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+
+  /* top bar */
+  .topbar{padding:12px 18px 10px;border-bottom:1px solid var(--line);flex:0 0 auto;}
+  .eyebrow{font-family:var(--display);font-weight:600;letter-spacing:.22em;text-transform:uppercase;font-size:11px;color:var(--gold);margin:0;}
+  .event-name{font-family:var(--display);font-weight:500;font-size:15px;color:var(--muted);margin:2px 0 0;letter-spacing:.02em;}
+
+  /* ---- judge select ---- */
+  .select-wrap{padding:22px 18px 40px;overflow-y:auto;}
+  .select-lead{font-size:14px;line-height:1.6;color:var(--muted);margin:0 0 22px;}
+  .select-lead b{color:var(--ink);font-weight:600;}
+  .fam-group{margin-bottom:22px;}
+  .fam-label{font-family:var(--display);text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:10px;margin:0 0 11px;}
+  .fam-label::after{content:"";flex:1;height:1px;background:var(--line);}
+  .judge-btn{width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:9px;cursor:pointer;color:var(--ink);font-family:var(--body);text-align:left;transition:border-color .15s,transform .06s;}
+  .judge-btn:active{transform:scale(.99);}
+  .judge-btn:hover{border-color:var(--gold-dim);}
+  .judge-btn .jname{font-size:16px;font-weight:600;}
+  .judge-btn .jcap{font-size:12px;color:var(--muted);margin-top:2px;display:block;}
+  .judge-btn .chev{color:var(--gold);font-size:20px;line-height:1;}
+
+  /* ---- scoring shell (split) ---- */
+  .scoring{flex:1;display:flex;flex-direction:column;min-height:0;}
+  .judge-strip{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--panel);flex:0 0 auto;}
+  .judge-strip .who{display:flex;flex-direction:column;}
+  .judge-strip .who .n{font-weight:600;font-size:15px;}
+  .judge-strip .who .c{font-size:11px;color:var(--gold);letter-spacing:.05em;text-transform:uppercase;font-family:var(--display);font-weight:600;}
+  .switch-btn{background:transparent;border:1px solid var(--line);color:var(--muted);font-family:var(--body);font-size:12px;border-radius:9px;padding:7px 11px;cursor:pointer;}
+  .switch-btn:active{color:var(--ink);}
+  .sync-pill{font-family:var(--body);font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;border:1px solid;white-space:nowrap;margin-left:auto;margin-right:10px;}
+  .sync-pill.ok{color:var(--signal);border-color:#2f5e58;background:rgba(95,208,197,.08);}
+  .sync-pill.wait{color:var(--gold);border-color:var(--gold-dim);background:rgba(242,176,61,.10);}
+
+  /* input zone (scrolls within its own area) */
+  .input-zone{flex:1;min-height:0;overflow-y:auto;}
+  .rail{display:flex;gap:5px;padding:12px 18px 4px;}
+  .pip{flex:1;height:4px;border-radius:3px;background:var(--line);transition:background .2s;}
+  .pip.done{background:var(--signal);}
+  .pip.current{background:var(--gold);}
+  .rail-label{padding:6px 18px 0;font-size:11px;color:var(--muted);letter-spacing:.04em;}
+  .rail-label b{color:var(--signal);font-weight:600;}
+
+  .card{padding:6px 18px 16px;}
+  .band-head{padding:12px 0 14px;border-bottom:1px solid var(--line);margin-bottom:16px;}
+  .band-no{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--gold);letter-spacing:.06em;}
+  .band-meta{font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-family:var(--display);font-weight:500;margin:4px 0 6px;}
+  .band-name{font-family:var(--display);font-weight:600;font-size:23px;line-height:1.15;letter-spacing:.01em;}
+
+  .field{margin-bottom:14px;}
+  .field-label{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
+  .field-label .fl-main{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.04em;text-transform:uppercase;}
+  .field-label .fl-sub{font-size:11px;color:var(--muted);}
+  .stepper{display:flex;align-items:stretch;gap:9px;}
+  .step-btn{width:50px;flex:0 0 50px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:24px;border-radius:12px;cursor:pointer;font-family:var(--body);display:flex;align-items:center;justify-content:center;user-select:none;}
+  .step-btn:active{background:var(--panel-2);border-color:var(--gold-dim);}
+  .score-in{flex:1;min-width:0;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--ink);font-family:var(--mono);font-weight:700;font-size:30px;padding:8px 4px;outline:none;transition:border-color .15s;}
+  .score-in::-webkit-outer-spin-button,.score-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .score-in[type=number]{-moz-appearance:textfield;}
+  .score-in:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(242,176,61,.14);}
+  .score-in.filled{border-color:var(--signal);}
+
+  .ttl-box{margin-top:4px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,var(--panel-2),var(--panel));padding:13px 16px;display:flex;align-items:center;justify-content:space-between;}
+  .ttl-box .tl{font-family:var(--display);text-transform:uppercase;letter-spacing:.16em;font-size:12px;color:var(--muted);font-weight:600;}
+  .ttl-box .tl small{display:block;text-transform:none;letter-spacing:.02em;font-size:10px;margin-top:3px;color:var(--gold-dim);}
+  .ttl-right{display:flex;align-items:center;gap:14px;}
+  .rank-now{font-family:var(--display);font-weight:600;font-size:13px;color:var(--signal);text-transform:uppercase;letter-spacing:.08em;}
+  .rank-now.empty{color:var(--line);}
+  .ttl-val{font-family:var(--mono);font-weight:700;font-size:36px;color:var(--gold);line-height:1;}
+  .ttl-val.empty{color:var(--line);}
+
+  .nav{display:flex;gap:11px;padding:4px 18px 18px;}
+  .nav-btn{flex:1;padding:14px;border-radius:13px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;}
+  .nav-btn:active{transform:scale(.99);}
+  .nav-btn[disabled]{opacity:.32;cursor:default;}
+  .nav-btn.primary{background:var(--gold);color:#1a1305;border-color:var(--gold);}
+
+  /* ---- bottom panel: always-visible standings / sync ---- */
+  .panel{flex:0 0 auto;height:34vh;max-height:320px;min-height:170px;border-top:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;}
+  .panel-tabs{display:flex;flex:0 0 auto;border-bottom:1px solid var(--line);}
+  .ptab{flex:1;padding:11px;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;}
+  .ptab.active{color:var(--ink);border-bottom-color:var(--gold);}
+  .panel-body{flex:1;min-height:0;overflow-y:auto;}
+
+  /* standings list */
+  .st-list{padding:0 0 6px;}
+  .st-warn{display:flex;align-items:center;gap:8px;margin:8px 12px 4px;padding:8px 11px;border:1px solid var(--danger);background:rgba(232,112,90,.12);border-radius:9px;color:var(--danger);font-size:11.5px;font-weight:600;font-family:var(--body);}
+  .st-warn .wm{font-family:var(--display);letter-spacing:.06em;white-space:nowrap;}
+  .st-headrow,.st-row{display:grid;grid-template-columns:30px 1fr 38px 38px 50px;align-items:center;gap:8px;padding:8px 14px;}
+  .st-headrow{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);z-index:2;font-family:var(--display);font-weight:600;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+  .st-headrow span{text-align:center;}
+  .st-headrow .h-name{text-align:left;}
+  .st-row{width:100%;background:transparent;border:0;border-left:3px solid transparent;color:var(--ink);font-family:var(--body);text-align:left;cursor:pointer;}
+  .st-row:active{background:var(--panel-2);}
+  .st-row.cur{background:rgba(242,176,61,.08);border-left-color:var(--gold);}
+  .st-row.empty{opacity:.5;}
+  .st-row.tie{background:rgba(232,112,90,.10);border-left-color:var(--danger);}
+  .st-rank{font-family:var(--mono);font-weight:700;font-size:17px;color:var(--signal);text-align:center;}
+  .st-row.empty .st-rank{color:var(--line);}
+  .st-row.cur .st-rank{color:var(--gold);}
+  .st-row.tie .st-rank{color:var(--danger);}
+  .st-name{min-width:0;}
+  .st-name .st-no{font-family:var(--mono);font-size:11px;color:var(--muted);margin-right:6px;}
+  .st-name .st-bn{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%;vertical-align:bottom;}
+  .st-name .tieflag{color:var(--danger);font-size:11px;margin-left:5px;font-weight:700;}
+  .st-sub{font-family:var(--mono);font-weight:500;font-size:13px;color:var(--muted);text-align:center;}
+  .st-ttl{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--ink);text-align:center;}
+  .st-row.empty .st-sub,.st-row.empty .st-ttl{color:var(--line);}
+  .st-row.tie .st-ttl{color:var(--danger);}
+
+  /* sync pane */
+  .sync-pane{padding:12px 16px;}
+  .sync-pane .path{font-family:var(--mono);font-size:11px;color:var(--signal);margin:0 0 9px;}
+  .sync-pane pre{margin:0;font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--ink);white-space:pre-wrap;word-break:break-word;}
+  .copy-btn{margin-top:11px;width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);font-family:var(--body);font-size:13px;cursor:pointer;}
+  .copy-btn:active{border-color:var(--gold);}
+
+  .toast{position:fixed;left:50%;bottom:calc(34vh + 18px);transform:translateX(-50%) translateY(20px);background:var(--signal);color:#06251f;padding:10px 20px;border-radius:30px;font-weight:600;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.4);}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const FIELD_LABEL = {
+  Rep:"Repertoire 演技構成", Pfm:"Performance 完成度",
+  Cont:"Content 内容", Achv:"Achievement 達成度", Sbst:"Subset サブセット"
+};
+let CAPTIONS = [
+  {id:"ge1",family:"GE",name:"General Effect 1",fields:["Rep","Pfm"]},
+  {id:"ge2",family:"GE",name:"General Effect 2",fields:["Rep","Pfm"]},
+  {id:"ge3",family:"GE",name:"General Effect 3",fields:["Rep","Pfm"]},
+  {id:"ge4",family:"GE",name:"General Effect 4",fields:["Rep","Pfm"]},
+  {id:"va1",family:"Visual",name:"Visual Analysis 1",fields:["Cont","Achv"]},
+  {id:"va2",family:"Visual",name:"Visual Analysis 2",fields:["Cont","Achv"]},
+  {id:"cg1",family:"Visual",name:"Color Guard 1",fields:["Sbst","Achv"]},
+  {id:"cg2",family:"Visual",name:"Color Guard 2",fields:["Sbst","Achv"]},
+  {id:"ma1",family:"Music",name:"Music Analysis 1",fields:["Cont","Achv"]},
+  {id:"ma2",family:"Music",name:"Music Analysis 2",fields:["Cont","Achv"]},
+  {id:"mb1",family:"Music",name:"Music Perc. Battery 1",fields:["Cont","Achv"]},
+  {id:"mb2",family:"Music",name:"Music Perc. Battery 2",fields:["Cont","Achv"]},
+  {id:"mp1",family:"Music",name:"Music Perc. Pit 1",fields:["Cont","Achv"]},
+  {id:"mp2",family:"Music",name:"Music Perc. Pit 2",fields:["Cont","Achv"]}
+];
+let JUDGES = [
+  {id:"jge1",name:"大川勝己",captionId:"ge1"},{id:"jge2",name:"田中義之",captionId:"ge2"},
+  {id:"jge3",name:"阿佐美圭祐",captionId:"ge3"},{id:"jge4",name:"野上孟",captionId:"ge4"},
+  {id:"jva1",name:"井上隆介",captionId:"va1"},{id:"jva2",name:"大澤沙希",captionId:"va2"},
+  {id:"jcg1",name:"藤田奈緒美",captionId:"cg1"},{id:"jcg2",name:"笹原名津美",captionId:"cg2"},
+  {id:"jma1",name:"清水康弘",captionId:"ma1"},{id:"jma2",name:"片岡優斗",captionId:"ma2"},
+  {id:"jmb1",name:"中村裕治",captionId:"mb1"},{id:"jmb2",name:"仲本克也",captionId:"mb2"},
+  {id:"jmp1",name:"櫻井公美",captionId:"mp1"},{id:"jmp2",name:"長田英之",captionId:"mp2"}
+];
+let BANDS = [
+  {id:"b1",no:1,division:"MB/小",category:"一般",name:"Spirit of Stars",hasCG:true},
+  {id:"b2",no:2,division:"MB/小",category:"一般",name:"DER GLANZ",hasCG:true},
+  {id:"b3",no:3,division:"MB/中",category:"一般",name:"MARCHING BAND COURAGE",hasCG:true},
+  {id:"b4",no:4,division:"MB/中",category:"一般",name:"THE FOCUS",hasCG:true},
+  {id:"b5",no:5,division:"MB/中",category:"一般",name:"GENESIS",hasCG:true},
+  {id:"b6",no:6,division:"MB/大",category:"一般",name:"Yokohama INSPIRES Drum & Bugle Corps",hasCG:true},
+  {id:"b7",no:7,division:"MB/大",category:"一般",name:"YOKOHAMA ROBINS",hasCG:true}
+];
+const FAMILY_LABEL = {GE:"General Effect",Visual:"Visual",Music:"Music"};
+
+const state = { judgeId:null, bandIndex:0, scores:{}, panel:'standings' };
+
+/* ============================================================
+   Firebase 連携（案A：即時PUT＋自動リトライ＋端末退避）
+============================================================ */
+const CONFIG={DB_URL:"https://marching-matsuri-judge-default-rtdb.asia-southeast1.firebasedatabase.app",EVENT_ID:"shonan-2026"};
+const BASE=CONFIG.DB_URL.replace(/\/+$/,'');
+const cfgURL=`${BASE}/events/${CONFIG.EVENT_ID}/config.json`;
+const scoreURL=(jid,bid)=>`${BASE}/events/${CONFIG.EVENT_ID}/scores/${jid}/${bid}.json`;
+const LS={cfg:'mmj_cfg_'+CONFIG.EVENT_ID,queue:'mmj_queue_'+CONFIG.EVENT_ID,scores:'mmj_scores_'+CONFIG.EVENT_ID};
+function lsGet(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch(e){return def;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+let queue=lsGet(LS.queue,[]);       // 送信待ち [{jid,bid}]
+let syncing=false;
+function persistScores(){lsSet(LS.scores,state.scores);}
+function loadPersistedScores(){state.scores=lsGet(LS.scores,{});}
+function queueScore(jid,bid){
+  queue=queue.filter(q=>!(q.jid===jid&&q.bid===bid));
+  queue.push({jid,bid}); lsSet(LS.queue,queue);
+  updateSyncUI(); flush();
+}
+async function flush(){
+  if(syncing||!queue.length)return; syncing=true;
+  while(queue.length){
+    const it=queue[0];
+    const data=(state.scores[it.jid]&&state.scores[it.jid][it.bid])||null;
+    try{
+      const res=await fetch(scoreURL(it.jid,it.bid),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      queue.shift(); lsSet(LS.queue,queue); updateSyncUI();
+    }catch(e){ updateSyncUI(); break; }   // 失敗→端末に残し後でリトライ
+  }
+  syncing=false;
+}
+setInterval(()=>{if(queue.length)flush();},4000);
+window.addEventListener('online',flush);
+function updateSyncUI(){
+  const el=document.getElementById('syncpill'); if(!el)return;
+  if(queue.length){el.className='sync-pill wait';el.textContent='送信待ち '+queue.length+'件';}
+  else{el.className='sync-pill ok';el.textContent='同期済み';}
+}
+async function loadConfig(){
+  try{
+    const res=await fetch(cfgURL); if(!res.ok)throw new Error('HTTP '+res.status);
+    const cfg=await res.json(); if(!cfg||!cfg.captions)throw new Error('empty');
+    lsSet(LS.cfg,cfg); return cfg;
+  }catch(e){ const c=lsGet(LS.cfg,null); if(c)return c; throw e; }
+}
+async function boot(){
+  loadPersistedScores();
+  app.innerHTML='<div style="padding:64px 22px;text-align:center;color:#8b96ad;font-family:var(--body)">設定を読み込み中…</div>';
+  try{
+    const cfg=await loadConfig();
+    CAPTIONS=cfg.captions; JUDGES=cfg.judges; BANDS=cfg.bands;
+    render(); updateSyncUI(); flush();
+  }catch(e){
+    app.innerHTML='<div style="padding:52px 24px;text-align:center;color:#e8705a;font-family:var(--body);line-height:1.8">設定を読み込めませんでした。<br>ネット接続を確認して再読み込みしてください。<br><small style="color:#8b96ad">'+e.message+'</small></div>';
+  }
+}
+const capOf   = j => CAPTIONS.find(c=>c.id===j.captionId);
+const judgeOf = id => JUDGES.find(j=>j.id===id);
+
+function clampScore(v){ if(v===""||v==null)return ""; let n=parseInt(v,10);
+  if(isNaN(n))return ""; if(n<0)n=0; if(n>100)n=100; return n; }
+function bandEntry(jid,bid){ return (state.scores[jid]&&state.scores[jid][bid])||{}; }
+function isBandComplete(jid,bid){ const cap=capOf(judgeOf(jid)); const e=bandEntry(jid,bid);
+  return cap.fields.every(f=>e[f]!==""&&e[f]!=null); }
+function liveTtl(jid,bid){ const cap=capOf(judgeOf(jid)); const e=bandEntry(jid,bid);
+  const vals=cap.fields.map(f=>e[f]); if(vals.some(v=>v===""||v==null))return null;
+  return vals.reduce((a,b)=>a+b,0)/10; }
+
+function computeStandings(jid){
+  const rows = BANDS.map(b=>({band:b, ttl:liveTtl(jid,b.id)}));
+  const entered = rows.filter(r=>r.ttl!=null);
+  entered.forEach(r=>{ r.rank = 1 + entered.filter(o=>o.ttl>r.ttl).length; });
+  const ent = entered.slice().sort((a,b)=> a.rank-b.rank || a.band.no-b.band.no);
+  const emp = rows.filter(r=>r.ttl==null).sort((a,b)=>a.band.no-b.band.no);
+  return ent.concat(emp);
+}
+
+const app = document.getElementById('app');
+function render(){ state.judgeId ? renderScoring() : renderSelect(); }
+
+function renderSelect(){
+  const groups={GE:[],Visual:[],Music:[]};
+  JUDGES.forEach(j=>groups[capOf(j).family].push(j));
+  app.innerHTML = `
+    <div class="topbar"><p class="eyebrow">審査員入力</p><p class="event-name">2025 YOKOHAMA Final</p></div>
+    <div class="select-wrap">
+      <p class="select-lead">担当の<b>お名前を選んでください</b>。ログインは不要です。選ぶと、担当キャプションに合わせた入力画面に進みます。</p>
+      ${Object.keys(groups).map(fam=>`
+        <div class="fam-group"><p class="fam-label">${FAMILY_LABEL[fam]}</p>
+        ${groups[fam].map(j=>{const c=capOf(j);
+          return `<button class="judge-btn" data-jid="${j.id}">
+            <span><span class="jname">${j.name}</span><span class="jcap">${c.name}　/　${c.fields.join(' ＋ ')}</span></span>
+            <span class="chev">›</span></button>`;}).join('')}
+        </div>`).join('')}
+    </div>`;
+  app.querySelectorAll('.judge-btn').forEach(b=>b.addEventListener('click',()=>{
+    state.judgeId=b.dataset.jid; state.bandIndex=0; render();
+  }));
+}
+
+function renderScoring(){
+  const judge=judgeOf(state.judgeId), cap=capOf(judge), band=BANDS[state.bandIndex];
+  app.innerHTML = `
+    <div class="topbar"><p class="eyebrow">審査員入力</p><p class="event-name">2025 YOKOHAMA Final</p></div>
+    <div class="judge-strip">
+      <div class="who"><span class="n">${judge.name}</span><span class="c">${cap.name}</span></div>
+      <span class="sync-pill ok" id="syncpill">同期済み</span>
+      <button class="switch-btn" id="switch">審査員を変更</button>
+    </div>
+    <div class="scoring">
+      <div class="input-zone">
+        <div class="rail">${BANDS.map((b,i)=>{
+          const cls=i===state.bandIndex?'current':(isBandComplete(judge.id,b.id)?'done':'');
+          return `<span class="pip ${cls}"></span>`;}).join('')}</div>
+        <p class="rail-label">入力済み <b>${BANDS.filter(b=>isBandComplete(judge.id,b.id)).length}</b> / ${BANDS.length} 団体</p>
+        <div class="card">
+          <div class="band-head">
+            <div class="band-no">NO.${String(band.no).padStart(2,'0')}</div>
+            <div class="band-meta">${band.division}　·　${band.category}${band.hasCG?'　·　CG 有':'　·　CG 無'}</div>
+            <div class="band-name">${band.name}</div>
+          </div>
+          ${cap.fields.map(f=>{
+            const val=bandEntry(judge.id,band.id)[f]; const filled=(val!==""&&val!=null);
+            return `<div class="field">
+              <div class="field-label"><span class="fl-main">${f}</span><span class="fl-sub">${FIELD_LABEL[f]}　/　0–100</span></div>
+              <div class="stepper">
+                <button class="step-btn" data-step="-1" data-field="${f}" aria-label="${f} を1減らす">−</button>
+                <input class="score-in ${filled?'filled':''}" type="number" inputmode="numeric" min="0" max="100" data-field="${f}" value="${filled?val:''}" placeholder="––" aria-label="${f} の点数">
+                <button class="step-btn" data-step="1" data-field="${f}" aria-label="${f} を1増やす">＋</button>
+              </div></div>`;}).join('')}
+          <div class="ttl-box">
+            <span class="tl">Ttl<small>(${cap.fields.join(' ＋ ')}) ÷ 10</small></span>
+            <span class="ttl-right"><span class="rank-now empty" id="ranknow">– 位</span><span class="ttl-val empty" id="ttl">––.––</span></span>
+          </div>
+        </div>
+        <div class="nav">
+          <button class="nav-btn" id="prev" ${state.bandIndex===0?'disabled':''}>‹ 前</button>
+          <button class="nav-btn primary" id="next">${state.bandIndex===BANDS.length-1?'最初へ ↺':'次 ›'}</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-tabs">
+          <button class="ptab ${state.panel==='standings'?'active':''}" data-tab="standings">順位表</button>
+          <button class="ptab ${state.panel==='sync'?'active':''}" data-tab="sync">同期データ</button>
+        </div>
+        <div class="panel-body" id="panelbody"></div>
+      </div>
+    </div>`;
+
+  app.querySelectorAll('.score-in').forEach(inp=>{
+    inp.addEventListener('input',()=>onScoreInput(inp.dataset.field,inp.value,inp));
+    inp.addEventListener('blur',()=>{const c=clampScore(inp.value);inp.value=c===""?"":c;onScoreInput(inp.dataset.field,inp.value,inp);});
+  });
+  app.querySelectorAll('.step-btn').forEach(b=>b.addEventListener('click',()=>{
+    const f=b.dataset.field, inp=app.querySelector(`.score-in[data-field="${f}"]`);
+    const cur=inp.value===""?0:parseInt(inp.value,10);
+    inp.value=clampScore(cur+parseInt(b.dataset.step,10)); onScoreInput(f,inp.value,inp);
+  }));
+  app.querySelector('#prev').addEventListener('click',()=>{if(state.bandIndex>0){state.bandIndex--;render();}});
+  app.querySelector('#next').addEventListener('click',()=>{state.bandIndex=(state.bandIndex+1)%BANDS.length;render();});
+  app.querySelector('#switch').addEventListener('click',()=>{state.judgeId=null;render();});
+  app.querySelectorAll('.ptab').forEach(t=>t.addEventListener('click',()=>{
+    state.panel=t.dataset.tab;
+    app.querySelectorAll('.ptab').forEach(x=>x.classList.toggle('active',x.dataset.tab===state.panel));
+    renderPanel();
+  }));
+  // delegated tap-to-jump on standings
+  app.querySelector('#panelbody').addEventListener('click',e=>{
+    const row=e.target.closest('.st-row'); if(!row)return;
+    const idx=BANDS.findIndex(b=>b.id===row.dataset.bid); if(idx>=0){state.bandIndex=idx;render();}
+  });
+
+  renderPanel(); updateLive(); updateSyncUI();
+}
+
+function renderPanel(){
+  const body=app.querySelector('#panelbody'); if(!body)return;
+  const judge=judgeOf(state.judgeId);
+  if(state.panel==='sync'){
+    const obj={}; obj[judge.id]=state.scores[judge.id]||{};
+    body.innerHTML=`<div class="sync-pane">
+      <p class="path">scores / ${judge.id} / {団体ID}</p>
+      <pre id="json">${JSON.stringify(obj,null,2)}</pre>
+      <button class="copy-btn" id="copy">この審査員の素点をコピー</button></div>`;
+    body.querySelector('#copy').addEventListener('click',copyScores);
+  } else {
+    body.innerHTML=`<div class="st-list" id="stlist">${standingsHTML()}</div>`;
+  }
+}
+function standingsHTML(){
+  const judge=judgeOf(state.judgeId), cap=capOf(judge);
+  const f1=cap.fields[0], f2=cap.fields[1];
+  const list=computeStandings(judge.id);
+  const counts={}; list.forEach(r=>{ if(r.ttl!=null) counts[r.ttl]=(counts[r.ttl]||0)+1; });
+  const tieGroups=Object.values(counts).filter(c=>c>1).length;
+  const warn = tieGroups>0
+    ? `<div class="st-warn"><span class="wm">⚠ 同点</span><span>${tieGroups}組の同点があります。順位の確定にご注意ください。</span></div>` : '';
+  const header=`<div class="st-headrow"><span></span><span class="h-name">団体</span><span>${f1}</span><span>${f2}</span><span>Ttl</span></div>`;
+  const rows=list.map(r=>{
+    const cur=r.band.id===BANDS[state.bandIndex].id;
+    const empty=r.ttl==null;
+    const tie=!empty && counts[r.ttl]>1;
+    const e=bandEntry(judge.id,r.band.id);
+    const v1=(e[f1]!==""&&e[f1]!=null)?e[f1]:'–';
+    const v2=(e[f2]!==""&&e[f2]!=null)?e[f2]:'–';
+    return `<button class="st-row ${cur?'cur':''} ${empty?'empty':''} ${tie?'tie':''}" data-bid="${r.band.id}">
+      <span class="st-rank">${empty?'–':r.rank}</span>
+      <span class="st-name"><span class="st-no">${String(r.band.no).padStart(2,'0')}</span><span class="st-bn">${r.band.name}</span>${tie?'<span class="tieflag">⚠</span>':''}</span>
+      <span class="st-sub">${empty?'–':v1}</span>
+      <span class="st-sub">${empty?'–':v2}</span>
+      <span class="st-ttl">${empty?'––.––':r.ttl.toFixed(2)}</span>
+    </button>`;}).join('');
+  return warn+header+rows;
+}
+
+function onScoreInput(field,value,inputEl){
+  const judge=judgeOf(state.judgeId), band=BANDS[state.bandIndex];
+  const v=clampScore(value);
+  state.scores[judge.id]=state.scores[judge.id]||{};
+  state.scores[judge.id][band.id]=state.scores[judge.id][band.id]||{};
+  if(v===""){delete state.scores[judge.id][band.id][field];}
+  else{state.scores[judge.id][band.id][field]=v;}
+  if(Object.keys(state.scores[judge.id][band.id]).length===0)delete state.scores[judge.id][band.id];
+  inputEl.classList.toggle('filled',v!=="");
+  persistScores();
+  queueScore(judge.id,band.id);
+  updateLive(true);
+}
+
+let lastComplete=false;
+function updateLive(checkToast){
+  const judge=judgeOf(state.judgeId), band=BANDS[state.bandIndex];
+  const ttl=liveTtl(judge.id,band.id);
+  const ttlEl=app.querySelector('#ttl');
+  if(ttlEl){ if(ttl==null){ttlEl.textContent='––.––';ttlEl.classList.add('empty');}
+    else{ttlEl.textContent=ttl.toFixed(2);ttlEl.classList.remove('empty');} }
+  // current rank
+  const standings=computeStandings(judge.id);
+  const me=standings.find(r=>r.band.id===band.id);
+  const rn=app.querySelector('#ranknow');
+  if(rn){ if(me&&me.ttl!=null){rn.textContent=me.rank+' 位';rn.classList.remove('empty');}
+    else{rn.textContent='– 位';rn.classList.add('empty');} }
+  // rail + counter
+  const pips=app.querySelectorAll('.pip'); let done=0;
+  BANDS.forEach((b,i)=>{const c=isBandComplete(judge.id,b.id);if(c)done++;
+    if(pips[i])pips[i].className='pip '+(i===state.bandIndex?'current':(c?'done':''));});
+  const rl=app.querySelector('.rail-label b'); if(rl)rl.textContent=done;
+  // panel refresh
+  if(state.panel==='standings'){ const sl=app.querySelector('#stlist'); if(sl)sl.innerHTML=standingsHTML(); }
+  else { const j=app.querySelector('#json'); if(j){const o={};o[judge.id]=state.scores[judge.id]||{};j.textContent=JSON.stringify(o,null,2);} }
+  // toast
+  if(checkToast){ const now=isBandComplete(judge.id,band.id);
+    if(now&&!lastComplete)showToast('記録しました'); lastComplete=now; }
+  else lastComplete=isBandComplete(judge.id,band.id);
+}
+
+function copyScores(){
+  const judge=judgeOf(state.judgeId); const o={}; o[judge.id]=state.scores[judge.id]||{};
+  navigator.clipboard?.writeText(JSON.stringify(o,null,2)).then(()=>showToast('コピーしました'),()=>showToast('コピーできませんでした'));
+}
+let toastTimer;
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1400);}
+
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大会セットアップ — Marching Matsuri Judge</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Inter:wght@400;500;600&display=swap');
+  :root{--field:#0e1320;--panel:#161d2e;--panel-2:#1d2740;--line:#2a3650;--ink:#eef2fb;--muted:#8b96ad;--gold:#f2b03d;--gold-dim:#9c7327;--signal:#5fd0c5;--danger:#e8705a;
+    --display:'Oswald','Arial Narrow',system-ui,sans-serif;--body:'Inter',system-ui,-apple-system,sans-serif;--mono:'JetBrains Mono',ui-monospace,Menlo,monospace;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--field);background-image:radial-gradient(110% 60% at 50% -8%,#1a2440 0%,var(--field) 55%);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:640px;margin:0 auto;padding:22px 18px 60px;}
+  .eyebrow{font-family:var(--display);font-weight:600;letter-spacing:.22em;text-transform:uppercase;font-size:11px;color:var(--gold);margin:0;}
+  .title{font-family:var(--display);font-weight:600;font-size:24px;margin:3px 0 0;}
+  .sub{font-size:13px;color:var(--muted);margin:6px 0 20px;line-height:1.6;}
+
+  .card{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:16px 18px;margin-bottom:16px;}
+  .card h2{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);margin:0 0 12px;display:flex;align-items:center;gap:9px;}
+  .card h2 .n{width:22px;height:22px;border-radius:50%;background:var(--gold);color:#1a1305;font-size:12px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);}
+
+  .kv{font-family:var(--mono);font-size:11.5px;color:var(--signal);word-break:break-all;line-height:1.6;}
+  .kv b{color:var(--muted);font-family:var(--body);}
+
+  label{display:block;font-size:12px;color:var(--muted);margin:12px 0 6px;font-weight:500;}
+  input[type=text],input[type=date]{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;color:var(--ink);font-family:var(--body);font-size:15px;padding:11px 13px;outline:none;}
+  input:focus{border-color:var(--gold);}
+
+  .summary{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  .chip{border:1px solid var(--line);border-radius:10px;padding:8px 13px;font-size:12px;color:var(--muted);background:var(--panel-2);}
+  .chip b{font-family:var(--mono);font-size:16px;color:var(--ink);margin-right:5px;}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:11px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:.12s;}
+  .btn:hover{border-color:var(--gold-dim);}
+  .btn:active{transform:scale(.99);}
+  .btn.primary{background:var(--gold);color:#1a1305;border-color:var(--gold);}
+  .btn.danger{border-color:var(--danger);color:var(--danger);}
+  .btn[disabled]{opacity:.5;cursor:default;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+
+  .log{margin-top:14px;border:1px solid var(--line);border-radius:11px;background:#0b0f1a;padding:12px 14px;font-family:var(--mono);font-size:12px;line-height:1.7;max-height:240px;overflow:auto;}
+  .log .l{display:block;}
+  .log .ok{color:var(--signal);}
+  .log .err{color:var(--danger);}
+  .log .info{color:var(--muted);}
+  .log .warn{color:var(--gold);}
+
+  .note{font-size:12px;color:var(--muted);line-height:1.7;margin-top:10px;}
+  .note code{font-family:var(--mono);color:var(--ink);background:var(--panel-2);padding:1px 6px;border-radius:5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">大会セットアップ</p>
+  <h1 class="title">Marching Matsuri Judge</h1>
+  <p class="sub">審査アプリの設定（団体・審査員・配点）を Firebase にアップロードします。最初に1回だけ実行してください。ここが起点になり、審査員ページ・管理ページはこの設定を読み込みます。</p>
+
+  <div class="card">
+    <h2><span class="n">1</span>接続先の確認</h2>
+    <p class="kv"><b>データベース：</b><br><span id="dbline"></span></p>
+    <p class="kv"><b>保存先パス：</b><br><span id="pathline"></span></p>
+    <p class="note">この2行が正しければ準備OKです。違う場合はファイル先頭の <code>CONFIG</code> を直します。</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span>大会情報</h2>
+    <label>大会名（表示用・あとで変更可）</label>
+    <input type="text" id="evname" value="Shonan 2026">
+    <label>開催日</label>
+    <input type="date" id="evdate" value="2026-01-04">
+    <div class="summary" id="summary"></div>
+    <p class="note">団体・審査員・キャプションの中身は現在サンプル（横浜大会データ）です。本番はこの後の編集で差し替えられます。まずはこのままアップロードして疎通を確認しましょう。</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span>アップロード</h2>
+    <div class="btn-row">
+      <button class="btn primary" id="upload">Firebaseにアップロード</button>
+      <button class="btn" id="verify">現在の設定を確認</button>
+      <button class="btn danger" id="reset">スコアをリセット</button>
+    </div>
+    <div class="log" id="log"><span class="l info">待機中…　「Firebaseにアップロード」を押すと開始します。</span></div>
+  </div>
+</div>
+
+<script>
+/* ===================== CONFIG（ここだけ編集） ===================== */
+const CONFIG={
+  DB_URL:"https://marching-matsuri-judge-default-rtdb.asia-southeast1.firebasedatabase.app",
+  EVENT_ID:"shonan-2026"
+};
+
+/* ===================== アップロードする設定（サンプル：一般部門） ===================== */
+const CAPTIONS=[
+  {id:"ge1",family:"GE",name:"General Effect 1",fields:["Rep","Pfm"]},
+  {id:"ge2",family:"GE",name:"General Effect 2",fields:["Rep","Pfm"]},
+  {id:"ge3",family:"GE",name:"General Effect 3",fields:["Rep","Pfm"]},
+  {id:"ge4",family:"GE",name:"General Effect 4",fields:["Rep","Pfm"]},
+  {id:"va1",family:"Visual",name:"Visual Analysis 1",fields:["Cont","Achv"],isCG:false},
+  {id:"va2",family:"Visual",name:"Visual Analysis 2",fields:["Cont","Achv"],isCG:false},
+  {id:"cg1",family:"Visual",name:"Color Guard 1",fields:["Sbst","Achv"],isCG:true},
+  {id:"cg2",family:"Visual",name:"Color Guard 2",fields:["Sbst","Achv"],isCG:true},
+  {id:"ma1",family:"Music",name:"Music Analysis 1",fields:["Cont","Achv"]},
+  {id:"ma2",family:"Music",name:"Music Analysis 2",fields:["Cont","Achv"]},
+  {id:"mb1",family:"Music",name:"Music Perc. Battery 1",fields:["Cont","Achv"]},
+  {id:"mb2",family:"Music",name:"Music Perc. Battery 2",fields:["Cont","Achv"]},
+  {id:"mp1",family:"Music",name:"Music Perc. Pit 1",fields:["Cont","Achv"]},
+  {id:"mp2",family:"Music",name:"Music Perc. Pit 2",fields:["Cont","Achv"]}
+];
+const JUDGES=[
+  {id:"jge1",name:"大川勝己",captionId:"ge1"},{id:"jge2",name:"田中義之",captionId:"ge2"},
+  {id:"jge3",name:"阿佐美圭祐",captionId:"ge3"},{id:"jge4",name:"野上孟",captionId:"ge4"},
+  {id:"jva1",name:"井上隆介",captionId:"va1"},{id:"jva2",name:"大澤沙希",captionId:"va2"},
+  {id:"jcg1",name:"藤田奈緒美",captionId:"cg1"},{id:"jcg2",name:"笹原名津美",captionId:"cg2"},
+  {id:"jma1",name:"清水康弘",captionId:"ma1"},{id:"jma2",name:"片岡優斗",captionId:"ma2"},
+  {id:"jmb1",name:"中村裕治",captionId:"mb1"},{id:"jmb2",name:"仲本克也",captionId:"mb2"},
+  {id:"jmp1",name:"櫻井公美",captionId:"mp1"},{id:"jmp2",name:"長田英之",captionId:"mp2"}
+];
+const BANDS=[
+  {id:"b1",no:1,division:"MB/小",category:"一般",name:"Spirit of Stars",hasCG:true},
+  {id:"b2",no:2,division:"MB/小",category:"一般",name:"DER GLANZ",hasCG:true},
+  {id:"b3",no:3,division:"MB/中",category:"一般",name:"MARCHING BAND COURAGE",hasCG:true},
+  {id:"b4",no:4,division:"MB/中",category:"一般",name:"THE FOCUS",hasCG:true},
+  {id:"b5",no:5,division:"MB/中",category:"一般",name:"GENESIS",hasCG:true},
+  {id:"b6",no:6,division:"MB/大",category:"一般",name:"Yokohama INSPIRES Drum & Bugle Corps",hasCG:true},
+  {id:"b7",no:7,division:"MB/大",category:"一般",name:"YOKOHAMA ROBINS",hasCG:true}
+];
+const FAMILIES={GE:{factor:2.0,max:40},Visual:{factor:1.5,max:30},Music:{factor:1.5,max:30}};
+const PRIZE_RULES=[
+  {division:"MB/小",gold:80,silver:61},
+  {division:"MB/中",gold:85,silver:61},
+  {division:"MB/大",gold:90,silver:61}
+];
+
+/* ===================== 通信 ===================== */
+const base=CONFIG.DB_URL.replace(/\/+$/,'');
+const cfgURL=`${base}/events/${CONFIG.EVENT_ID}/config.json`;
+const scoresURL=`${base}/events/${CONFIG.EVENT_ID}/scores.json`;
+
+document.getElementById('dbline').textContent=base;
+document.getElementById('pathline').textContent=`events/${CONFIG.EVENT_ID}/config`;
+document.getElementById('summary').innerHTML=
+  `<span class="chip"><b>${BANDS.length}</b>団体</span>
+   <span class="chip"><b>${JUDGES.length}</b>審査員</span>
+   <span class="chip"><b>${CAPTIONS.length}</b>キャプション</span>`;
+
+const logEl=document.getElementById('log');
+function log(msg,cls='info'){const s=document.createElement('span');s.className='l '+cls;s.textContent=msg;logEl.appendChild(s);logEl.scrollTop=logEl.scrollHeight;}
+function clearLog(){logEl.innerHTML='';}
+
+function buildConfig(){
+  return {
+    event:{id:CONFIG.EVENT_ID,name:document.getElementById('evname').value.trim()||CONFIG.EVENT_ID,date:document.getElementById('evdate').value},
+    families:FAMILIES, captions:CAPTIONS, judges:JUDGES, bands:BANDS, prizeRules:PRIZE_RULES,
+    updatedAt:new Date().toISOString()
+  };
+}
+
+async function upload(){
+  clearLog(); log('アップロードを開始します…','info');
+  const cfg=buildConfig();
+  try{
+    const res=await fetch(cfgURL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
+    if(!res.ok){
+      const t=await res.text();
+      if(res.status===401||/permission/i.test(t)){log('✗ 拒否されました（Permission denied）。ルールが「ロックモード」のままの可能性があります。ルールを開放ルールに差し替えて公開してください。','err');}
+      else{log(`✗ 失敗しました（HTTP ${res.status}）：${t}`,'err');}
+      return;
+    }
+    log('✓ 設定をアップロードしました。','ok');
+    log(`  大会名：${cfg.event.name}／${cfg.event.date}`,'info');
+    log(`  ${BANDS.length}団体・${JUDGES.length}審査員・${CAPTIONS.length}キャプション`,'info');
+    log('これで審査員ページ・管理ページがこの設定を読み込めます。','ok');
+  }catch(e){
+    log('✗ 通信エラー：'+e.message,'err');
+    log('・ネット接続を確認／・DB URLが正しいか確認してください。','warn');
+  }
+}
+
+async function verify(){
+  clearLog(); log('現在の設定を取得します…','info');
+  try{
+    const res=await fetch(cfgURL);
+    if(!res.ok){log(`✗ 取得失敗（HTTP ${res.status}）`,'err');return;}
+    const data=await res.json();
+    if(!data){log('（まだ何も保存されていません。「Firebaseにアップロード」を先に実行してください）','warn');return;}
+    log('✓ 保存済みの設定が見つかりました。','ok');
+    log(`  大会名：${data.event?data.event.name:'—'}／${data.event?data.event.date:'—'}`,'info');
+    log(`  団体：${data.bands?data.bands.length:0}／審査員：${data.judges?data.judges.length:0}／キャプション：${data.captions?data.captions.length:0}`,'info');
+    log(`  最終更新：${data.updatedAt||'—'}`,'info');
+  }catch(e){log('✗ 通信エラー：'+e.message,'err');}
+}
+
+async function resetScores(){
+  if(!confirm('この大会の入力済みスコアをすべて削除します。設定（団体・審査員）は残ります。よろしいですか？'))return;
+  clearLog(); log('スコアを削除します…','warn');
+  try{
+    const res=await fetch(scoresURL,{method:'DELETE'});
+    if(!res.ok){log(`✗ 失敗（HTTP ${res.status}）`,'err');return;}
+    log('✓ スコアを全消去しました。設定はそのままです。','ok');
+  }catch(e){log('✗ 通信エラー：'+e.message,'err');}
+}
+
+document.getElementById('upload').addEventListener('click',upload);
+document.getElementById('verify').addEventListener('click',verify);
+document.getElementById('reset').addEventListener('click',resetScores);
+</script>
+</body>
+</html>

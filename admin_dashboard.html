@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理者集計 — 2025 YOKOHAMA Final</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Inter:wght@400;500;600&display=swap');
+  :root{
+    --field:#0e1320; --panel:#161d2e; --panel-2:#1d2740; --line:#2a3650;
+    --ink:#eef2fb; --muted:#8b96ad; --gold:#f2b03d; --gold-dim:#9c7327;
+    --signal:#5fd0c5; --danger:#e8705a; --silver:#c3ccdb;
+    --display:'Oswald','Arial Narrow',system-ui,sans-serif;
+    --body:'Inter',system-ui,-apple-system,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--field);background-image:radial-gradient(110% 60% at 50% -8%,#1a2440 0%,var(--field) 55%);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:960px;margin:0 auto;padding:18px 16px 60px;}
+
+  .topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:16px;flex-wrap:wrap;}
+  .eyebrow{font-family:var(--display);font-weight:600;letter-spacing:.22em;text-transform:uppercase;font-size:11px;color:var(--gold);margin:0;}
+  .title{font-family:var(--display);font-weight:600;font-size:24px;margin:3px 0 0;letter-spacing:.01em;}
+  .sub{font-size:12px;color:var(--muted);margin:4px 0 0;}
+  .count{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--signal);}
+
+  .check{display:flex;align-items:center;gap:11px;padding:13px 16px;border-radius:12px;margin-bottom:16px;font-size:13.5px;border:1px solid;}
+  .check.ok{border-color:var(--signal);background:rgba(95,208,197,.10);color:var(--signal);}
+  .check.bad{border-color:var(--danger);background:rgba(232,112,90,.10);color:var(--danger);}
+  .check .badge{font-family:var(--display);font-weight:700;letter-spacing:.05em;font-size:13px;white-space:nowrap;}
+  .check small{color:var(--muted);font-size:11.5px;}
+
+  .tie-warn{display:flex;align-items:center;gap:9px;padding:10px 14px;border:1px solid var(--danger);background:rgba(232,112,90,.10);border-radius:11px;color:var(--danger);font-size:12.5px;font-weight:600;margin-bottom:16px;}
+  .tie-warn .wm{font-family:var(--display);letter-spacing:.06em;}
+
+  .subs{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:12px 14px;margin-bottom:16px;}
+  .subs-head{font-family:var(--display);font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:12px;color:var(--ink);margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline;}
+  .subs-head span{color:var(--muted);font-family:var(--mono);letter-spacing:0;font-size:12px;}
+  .subs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;}
+  .subs-cell{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);border-left:3px solid var(--line);}
+  .subs-cell.full{border-left-color:var(--signal);}
+  .subs-cell.partial{border-left-color:var(--gold);}
+  .subs-cell .sj{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .subs-cell .sc{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .subs-cell.full .sc{color:var(--signal);}
+  .subs-cell.partial .sc{color:var(--gold);}
+
+  .toolbar{display:flex;gap:10px;justify-content:flex-end;margin-bottom:14px;flex-wrap:wrap;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:border-color .15s,transform .06s;}
+  .btn:hover{border-color:var(--gold-dim);}
+  .btn:active{transform:scale(.99);}
+  .btn.excel{background:var(--gold);color:#1a1305;border-color:var(--gold);}
+  .btn .ic{font-family:var(--mono);font-weight:700;font-size:11px;border:1px solid currentColor;border-radius:5px;padding:1px 5px;opacity:.85;}
+
+  .table-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;}
+  table{border-collapse:collapse;width:100%;min-width:720px;}
+  thead th{font-family:var(--display);font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:10.5px;color:var(--muted);padding:11px 10px;text-align:center;background:var(--panel);border-bottom:1px solid var(--line);white-space:nowrap;}
+  thead th.l{text-align:left;}
+  tbody td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:center;font-size:13px;vertical-align:middle;}
+  tbody tr.band-row{cursor:pointer;transition:background .12s;}
+  tbody tr.band-row:hover{background:var(--panel);}
+  tbody tr.tie td{background:rgba(232,112,90,.08);}
+  .c-rank{font-family:var(--mono);font-weight:700;font-size:18px;color:var(--gold);width:46px;}
+  tr.tie .c-rank{color:var(--danger);}
+  .c-no{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .c-div{font-family:var(--display);font-size:11px;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;white-space:nowrap;}
+  .c-team{text-align:left;font-weight:500;font-size:13.5px;min-width:180px;}
+  .c-team .caret{color:var(--gold-dim);font-size:11px;margin-right:7px;display:inline-block;transition:transform .15s;}
+  tr.open .c-team .caret{transform:rotate(90deg);}
+  .sc{font-family:var(--mono);font-weight:700;font-size:14px;}
+  .sc .rk{display:block;font-family:var(--body);font-weight:500;font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:.04em;}
+  .c-final{font-family:var(--mono);font-weight:700;font-size:17px;color:var(--gold);}
+  tr.tie .c-final{color:var(--danger);}
+  .tieflag{color:var(--danger);font-weight:700;margin-left:6px;}
+
+  .prize{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.05em;padding:4px 10px;border-radius:20px;border:1px solid;white-space:nowrap;}
+  .prize.gold{color:var(--gold);border-color:var(--gold-dim);background:rgba(242,176,61,.10);}
+  .prize.silver{color:var(--silver);border-color:#586275;background:rgba(195,204,219,.07);}
+  .prize.bronze{color:#c48a5a;border-color:#6b4f37;background:rgba(196,138,90,.08);}
+  .prize.none{color:var(--muted);border-color:var(--line);}
+
+  /* Pen + CG editable cells */
+  .pen-in{width:46px;text-align:center;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;color:var(--ink);font-family:var(--mono);font-weight:700;font-size:13px;padding:5px 3px;outline:none;}
+  .pen-in:focus{border-color:var(--gold);}
+  .cg-toggle{font-family:var(--mono);font-weight:700;font-size:12px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);border-radius:7px;padding:5px 9px;cursor:pointer;}
+  .cg-toggle.no{color:var(--danger);border-color:var(--danger);}
+  .cg-toggle.yes{color:var(--signal);border-color:#2f5e58;}
+
+  /* detail */
+  tr.detail-row td{padding:0;border-bottom:1px solid var(--line);}
+  .detail{display:none;padding:16px 18px;background:var(--panel);}
+  tr.detail-row.show .detail{display:block;}
+  .fam-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;}
+  .fam-card{border:1px solid var(--line);border-radius:11px;padding:13px 14px;background:var(--panel-2);}
+  .fam-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid var(--line);}
+  .fam-name{font-family:var(--display);font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:12px;}
+  .fam-sub{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--gold);}
+  .fam-sub small{font-family:var(--body);font-weight:500;color:var(--muted);font-size:10px;margin-left:4px;}
+  .jrow{display:flex;align-items:center;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--muted);}
+  .jrow .jn{color:var(--ink);}
+  .jrow .jraw{font-family:var(--mono);}
+  .jrow.muted{opacity:.4;text-decoration:line-through;}
+  .fam-note{font-size:10.5px;color:var(--gold-dim);margin-top:8px;line-height:1.4;}
+
+  .legend{margin-top:16px;font-size:11.5px;color:var(--muted);line-height:1.7;}
+  .legend code{font-family:var(--mono);color:var(--ink);background:var(--panel);padding:1px 6px;border-radius:5px;}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap"></div>
+
+<script>
+/* ===================== 設定（一般部門） ===================== */
+let EVENT={name:"",date:""};
+const FB={DB_URL:"https://marching-matsuri-judge-default-rtdb.asia-southeast1.firebasedatabase.app",EVENT_ID:"shonan-2026"};
+const FB_BASE=FB.DB_URL.replace(/\/+$/,'');
+const cfgURL=`${FB_BASE}/events/${FB.EVENT_ID}/config.json`;
+const scoresURL=`${FB_BASE}/events/${FB.EVENT_ID}/scores.json`;
+let lastFetch=null, liveOK=false;
+const FACTOR={GE:2.0,Visual:1.5,Music:1.5};
+const FAM_MAX={GE:40,Visual:30,Music:30};
+
+let CAPTIONS=[
+  {id:"ge1",family:"GE"},{id:"ge2",family:"GE"},{id:"ge3",family:"GE"},{id:"ge4",family:"GE"},
+  {id:"va1",family:"Visual",cg:false},{id:"va2",family:"Visual",cg:false},
+  {id:"cg1",family:"Visual",cg:true},{id:"cg2",family:"Visual",cg:true},
+  {id:"ma1",family:"Music"},{id:"ma2",family:"Music"},
+  {id:"mb1",family:"Music"},{id:"mb2",family:"Music"},
+  {id:"mp1",family:"Music"},{id:"mp2",family:"Music"}
+];
+let JUDGES=[
+  {id:"jge1",name:"大川勝己",captionId:"ge1"},{id:"jge2",name:"田中義之",captionId:"ge2"},
+  {id:"jge3",name:"阿佐美圭祐",captionId:"ge3"},{id:"jge4",name:"野上孟",captionId:"ge4"},
+  {id:"jva1",name:"井上隆介",captionId:"va1"},{id:"jva2",name:"大澤沙希",captionId:"va2"},
+  {id:"jcg1",name:"藤田奈緒美",captionId:"cg1"},{id:"jcg2",name:"笹原名津美",captionId:"cg2"},
+  {id:"jma1",name:"清水康弘",captionId:"ma1"},{id:"jma2",name:"片岡優斗",captionId:"ma2"},
+  {id:"jmb1",name:"中村裕治",captionId:"mb1"},{id:"jmb2",name:"仲本克也",captionId:"mb2"},
+  {id:"jmp1",name:"櫻井公美",captionId:"mp1"},{id:"jmp2",name:"長田英之",captionId:"mp2"}
+];
+let BANDS=[
+  {id:"b1",no:1,division:"MB/小",name:"Spirit of Stars",hasCG:true},
+  {id:"b2",no:2,division:"MB/小",name:"DER GLANZ",hasCG:true},
+  {id:"b3",no:3,division:"MB/中",name:"MARCHING BAND COURAGE",hasCG:true},
+  {id:"b4",no:4,division:"MB/中",name:"THE FOCUS",hasCG:true},
+  {id:"b5",no:5,division:"MB/中",name:"GENESIS",hasCG:true},
+  {id:"b6",no:6,division:"MB/大",name:"Yokohama INSPIRES Drum & Bugle Corps",hasCG:true},
+  {id:"b7",no:7,division:"MB/大",name:"YOKOHAMA ROBINS",hasCG:true}
+];
+/* 賞カットライン（大会ごとに設定で変更可：今はサンプル値） */
+let PRIZE_RULES={
+  "MB/小":{gold:80,silver:61},
+  "MB/中":{gold:85,silver:61},
+  "MB/大":{gold:90,silver:61}
+};
+/* 公式記録の Final（検証用の答え合わせ） */
+const EXPECTED={b1:82.063,b2:85.413,b3:87.188,b4:90.663,b5:92.613,b6:94.125,b7:96.200};
+
+/* ===================== 素点（全審査員の実データ） ===================== */
+let SCORES={
+  jge1:{b1:[83,84],b2:[87,88],b3:[89,89],b4:[90,92],b5:[95,94],b6:[94,94],b7:[97,98]},
+  jge2:{b1:[72,71],b2:[74,75],b3:[83,82],b4:[88,89],b5:[91,91],b6:[92,93],b7:[94,95]},
+  jge3:{b1:[81,78],b2:[84,82],b3:[86,84],b4:[88,87],b5:[93,92],b6:[95,93],b7:[98,97]},
+  jge4:{b1:[80,79],b2:[85,83],b3:[87,86],b4:[92,91],b5:[90,92],b6:[95,94],b7:[95,97]},
+  jva1:{b1:[84,83],b2:[88,88],b3:[90,91],b4:[92,92],b5:[93,93],b6:[95,96],b7:[97,98]},
+  jva2:{b1:[85,84],b2:[88,88],b3:[87,88],b4:[90,91],b5:[91,91],b6:[94,94],b7:[97,96]},
+  jcg1:{b1:[84,86],b2:[87,87],b3:[86,87],b4:[91,91],b5:[90,90],b6:[93,93],b7:[94,94]},
+  jcg2:{b1:[87,88],b2:[89,88],b3:[89,89],b4:[92,92],b5:[91,92],b6:[95,94],b7:[95,95]},
+  jma1:{b1:[82,82],b2:[86,85],b3:[87,87],b4:[90,89],b5:[92,91],b6:[93,93],b7:[96,96]},
+  jma2:{b1:[82,82],b2:[85,87],b3:[86,89],b4:[92,92],b5:[93,93],b6:[95,96],b7:[97,98]},
+  jmb1:{b1:[82,81],b2:[84,83],b3:[89,88],b4:[91,90],b5:[94,93],b6:[96,95],b7:[97,97]},
+  jmb2:{b1:[83,82],b2:[86,84],b3:[88,87],b4:[92,89],b5:[96,94],b6:[95,96],b7:[98,97]},
+  jmp1:{b1:[88,90],b2:[91,93],b3:[90,91],b4:[92,93],b5:[95,95],b6:[92,92],b7:[93,94]},
+  jmp2:{b1:[85,86],b2:[91,91],b3:[86,87],b4:[93,93],b5:[98,98],b6:[95,96],b7:[97,97]}
+};
+
+/* admin編集状態（CG有無・Pen.） */
+const admin={};
+BANDS.forEach(b=>admin[b.id]={hasCG:b.hasCG,pen:0});
+
+/* ===================== 採点エンジン ===================== */
+const judgeByCap=cid=>JUDGES.find(j=>j.captionId===cid);
+const judgeById=id=>JUDGES.find(j=>j.id===id);
+function capFieldsOf(jid){const j=judgeById(jid);const c=j&&CAPTIONS.find(x=>x.id===j.captionId);return c?c.fields:null;}
+function rawVals(jid,bid){
+  const s=SCORES[jid]&&SCORES[jid][bid]; const f=capFieldsOf(jid); if(!s||!f)return null;
+  return f.map(k=>{const x=s[k];return (x==null||x==='')?null:Number(x);});
+}
+function jTtl(jid,bid){
+  const rv=rawVals(jid,bid); if(!rv||rv.some(v=>v==null))return null;
+  return (rv[0]+rv[1])/10;                       // Ttl = (素点合計) ÷ 10
+}
+function familySubtotal(bandId,family,hasCG){
+  let capIds;
+  if(family==='Visual'){const vis=CAPTIONS.filter(c=>c.family==='Visual');capIds=(hasCG?vis:vis.filter(c=>!c.isCG)).map(c=>c.id);}
+  else capIds = CAPTIONS.filter(c=>c.family===family).map(c=>c.id);
+  const ttls = capIds.map(cid=>jTtl(judgeByCap(cid).id,bandId)).filter(t=>t!=null);
+  if(!ttls.length) return null;
+  return (ttls.reduce((a,b)=>a+b,0)/ttls.length)*FACTOR[family];   // 平均 × 係数
+}
+function bandResult(b){
+  const hasCG=admin[b.id].hasCG, pen=admin[b.id].pen||0;
+  const efc=familySubtotal(b.id,'GE',hasCG);
+  const vis=familySubtotal(b.id,'Visual',hasCG);
+  const mus=familySubtotal(b.id,'Music',hasCG);
+  const sub=(efc||0)+(vis||0)+(mus||0);
+  const final=sub-pen;
+  return {band:b,hasCG,pen,efc,vis,mus,sub,final};
+}
+const r2=x=>x==null?null:Math.round(x*100)/100;
+const r3=x=>x==null?null:Math.round(x*1000)/1000;
+function rankBy(arr,getter){ // RANK.EQ（降順・同点同順位）
+  return arr.map(o=>1+arr.filter(p=>getter(p)>getter(o)).length);
+}
+function prizeOf(division,final){
+  const r=PRIZE_RULES[division]; if(!r) return {label:'—',cls:'none'};
+  if(final>=r.gold)   return {label:'金賞',cls:'gold'};
+  if(final>=r.silver) return {label:'銀賞',cls:'silver'};
+  return {label:'—',cls:'none'};
+}
+
+/* ===================== 描画 ===================== */
+const wrap=document.getElementById('wrap');
+function render(){
+  const results=BANDS.map(bandResult);
+  const finalRank=rankBy(results,r=>r.final);
+  const efcRank  =rankBy(results,r=>r.efc||0);
+  const visRank  =rankBy(results,r=>r.vis||0);
+  const musRank  =rankBy(results,r=>r.mus||0);
+  results.forEach((r,i)=>{r.finalRank=finalRank[i];r.efcRank=efcRank[i];r.visRank=visRank[i];r.musRank=musRank[i];});
+
+  // 同点（Final）
+  const fcounts={}; results.forEach(r=>{const k=r3(r.final);fcounts[k]=(fcounts[k]||0)+1;});
+  const tieGroups=Object.values(fcounts).filter(c=>c>1).length;
+
+  const sorted=results.slice().sort((a,b)=>a.finalRank-b.finalRank||a.band.no-b.band.no);
+
+  const checkHTML=`<div class="check ${liveOK?'ok':'bad'}"><span class="badge">${liveOK?'● ライブ同期中':'○ 接続待ち'}</span><small>${liveOK?('最終取得 '+(lastFetch?new Date(lastFetch).toLocaleTimeString('ja-JP'):'—')+'　·　5秒ごとに自動更新'):'Firebaseからスコアを取得しています…'}</small></div>`;
+
+  const subs=JUDGES.map(j=>{const done=BANDS.filter(b=>{const rv=rawVals(j.id,b.id);return rv&&rv.every(v=>v!=null);}).length;return {j,done,total:BANDS.length};});
+  const totalDone=subs.reduce((a,s)=>a+s.done,0);
+  const subsHTML=`<div class="subs"><div class="subs-head">提出状況 <span>${totalDone} / ${JUDGES.length*BANDS.length} 入力</span></div><div class="subs-grid">${subs.map(s=>`<div class="subs-cell ${s.done===s.total?'full':(s.done>0?'partial':'none')}"><span class="sj">${s.j.name}</span><span class="sc">${s.done}/${s.total}</span></div>`).join('')}</div></div>`;
+
+  const tieHTML=tieGroups>0
+    ? `<div class="tie-warn"><span class="wm">⚠ 同点</span>Final が同点の組が ${tieGroups}組あります（順位確定にご注意）。</div>`:'';
+
+  wrap.innerHTML=`
+    <div class="topbar">
+      <div>
+        <p class="eyebrow">管理者集計</p>
+        <h1 class="title">${EVENT.name}</h1>
+        <p class="sub">${EVENT.date}　·　一般部門　·　集計 <span class="count">${BANDS.length}</span> 団体</p>
+      </div>
+    </div>
+    ${checkHTML}
+    ${tieHTML}
+    ${subsHTML}
+    <div class="toolbar">
+      <button class="btn" id="exp-csv"><span class="ic">CSV</span> データ出力</button>
+      <button class="btn excel" id="exp-xlsx"><span class="ic">XLSX</span> Excel出力（印刷用）</button>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th>順位</th><th class="l">団体</th><th>Div</th>
+          <th>G.E.<br>/40</th><th>Visual<br>/30</th><th>Music<br>/30</th>
+          <th>CG</th><th>Pen.</th><th>Final<br>/100</th><th>賞</th>
+        </tr></thead>
+        <tbody>
+          ${sorted.map(r=>{
+            const tie=fcounts[r3(r.final)]>1;
+            const pz=prizeOf(r.band.division,r.final);
+            return `
+            <tr class="band-row ${tie?'tie':''}" data-bid="${r.band.id}">
+              <td class="c-rank">${r.finalRank}</td>
+              <td class="c-team"><span class="caret">▶</span><span class="c-no">${String(r.band.no).padStart(2,'0')}</span>　${r.band.name}${tie?'<span class="tieflag">⚠</span>':''}</td>
+              <td class="c-div">${r.band.division}</td>
+              <td><span class="sc">${r2(r.efc).toFixed(2)}<span class="rk">${r.efcRank}位</span></span></td>
+              <td><span class="sc">${r2(r.vis).toFixed(2)}<span class="rk">${r.visRank}位</span></span></td>
+              <td><span class="sc">${r2(r.mus).toFixed(2)}<span class="rk">${r.musRank}位</span></span></td>
+              <td><button class="cg-toggle ${r.hasCG?'yes':'no'}" data-cg="${r.band.id}">${r.hasCG?'有':'無'}</button></td>
+              <td><input class="pen-in" type="number" min="0" step="0.1" data-pen="${r.band.id}" value="${r.pen||''}" placeholder="0"></td>
+              <td class="c-final">${r3(r.final).toFixed(3)}</td>
+              <td><span class="prize ${pz.cls}">${pz.label}</span></td>
+            </tr>
+            <tr class="detail-row" data-detail="${r.band.id}"><td colspan="10"><div class="detail">${detailHTML(r)}</div></td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="legend">
+      <code>Ttl = (素点1 + 素点2) ÷ 10</code>　
+      <code>Efc. = GE審査員Ttlの平均 × 2</code>　
+      <code>Vis. = 視覚審査員Ttlの平均 × 1.5</code>　
+      <code>Mus. = 音楽審査員Ttlの平均 × 1.5</code><br>
+      <code>Final = Efc. + Vis. + Mus. − Pen.</code>　CG「無」の団体は Visual を Analysis 2人の平均×1.5 で算出（行をタップで内訳表示）。
+    </p>`;
+
+  // wire
+  wrap.querySelectorAll('.band-row').forEach(tr=>{
+    tr.addEventListener('click',e=>{
+      if(e.target.closest('.pen-in')||e.target.closest('.cg-toggle'))return;
+      const d=wrap.querySelector(`.detail-row[data-detail="${tr.dataset.bid}"]`);
+      d.classList.toggle('show'); tr.classList.toggle('open');
+    });
+  });
+  wrap.querySelectorAll('.cg-toggle').forEach(b=>b.addEventListener('click',e=>{
+    e.stopPropagation(); admin[b.dataset.cg].hasCG=!admin[b.dataset.cg].hasCG; render();
+  }));
+  wrap.querySelectorAll('.pen-in').forEach(inp=>{
+    inp.addEventListener('click',e=>e.stopPropagation());
+    inp.addEventListener('change',()=>{
+      let v=parseFloat(inp.value); if(isNaN(v)||v<0)v=0;
+      admin[inp.dataset.pen].pen=v; render();
+    });
+  });
+  wrap.querySelector('#exp-csv').addEventListener('click',exportCSV);
+  wrap.querySelector('#exp-xlsx').addEventListener('click',exportXLSX);
+}
+
+function detailHTML(r){
+  const fams=[
+    {key:'GE',label:'General Effect',sub:r.efc,rank:r.efcRank,
+     caps:['ge1','ge2','ge3','ge4'],fields:['Rep','Pfm'],note:'平均 × 2 = /40'},
+    {key:'Visual',label:'Visual',sub:r.vis,rank:r.visRank,
+     caps:r.hasCG?['va1','va2','cg1','cg2']:['va1','va2','cg1','cg2'],fields:['①','②'],
+     note:r.hasCG?'視覚4人平均 × 1.5 = /30':'CG無 → Analysis 2人のみ平均 × 1.5'},
+    {key:'Music',label:'Music',sub:r.mus,rank:r.musRank,
+     caps:['ma1','ma2','mb1','mb2','mp1','mp2'],fields:['Cont','Achv'],note:'平均 × 1.5 = /30'}
+  ];
+  return `<div class="fam-grid">${fams.map(f=>{
+    const rows=f.caps.map(cid=>{
+      const j=judgeByCap(cid); const t=jTtl(j.id,r.band.id);
+      const rv=rawVals(j.id,r.band.id);
+      const capIsCG=(CAPTIONS.find(c=>c.id===cid)||{}).isCG;
+      const counted=(f.key!=='Visual')||r.hasCG||!capIsCG;
+      return `<div class="jrow ${counted?'':'muted'}"><span class="jn">${j.name}</span>
+        <span class="jraw">${rv?`${rv[0]==null?'–':rv[0]}/${rv[1]==null?'–':rv[1]}`:'–'} → ${t!=null?t.toFixed(2):'–'}</span></div>`;
+    }).join('');
+    return `<div class="fam-card">
+      <div class="fam-head"><span class="fam-name">${f.label}</span>
+      <span class="fam-sub">${r2(f.sub).toFixed(2)}<small>${f.rank}位</small></span></div>
+      ${rows}<p class="fam-note">${f.note}</p></div>`;
+  }).join('')}</div>`;
+}
+
+/* ===================== 出力（CSV / Excel印刷用） ===================== */
+const ORDER_GE=['ge1','ge2','ge3','ge4'];
+const ORDER_VIS=['va1','va2','cg1','cg2'];
+const ORDER_MUS=['ma1','ma2','mb1','mb2','mp1','mp2'];
+const GROUP={ge1:'G.E.1',ge2:'G.E.2',ge3:'G.E.3',ge4:'G.E.4',
+  va1:'Visual Analysis 1',va2:'Visual Analysis 2',cg1:'Color Guard 1',cg2:'Color Guard 2',
+  ma1:'Music Analysis 1',ma2:'Music Analysis 2',mb1:'Music Perc. Battery 1',mb2:'Music Perc. Battery 2',
+  mp1:'Music Perc. Pit 1',mp2:'Music Perc. Pit 2'};
+function capFields(cap){if(cap.startsWith('ge'))return['Rep','Pfm'];if(cap==='cg1'||cap==='cg2')return['Sbst','Achv'];return['Cont','Achv'];}
+const FILL={GE:'FCEACB',Visual:'D2EAE6',Music:'DCE1F2',sub:'EFE3C6',label:'E9ECF3',final:'F2C879',rank:'F4F6FA',band:'FFFFFF',subband:'FBF6EA'};
+const INK='1A2332';
+
+function sortedResults(){
+  const results=BANDS.map(bandResult);
+  const fr=rankBy(results,r=>r.final);
+  results.forEach((r,i)=>r.finalRank=fr[i]);
+  results.efcRank=rankBy(results,r=>r.efc||0);
+  results.visRank=rankBy(results,r=>r.vis||0);
+  results.musRank=rankBy(results,r=>r.mus||0);
+  const sorted=results.slice().sort((a,b)=>a.finalRank-b.finalRank||a.band.no-b.band.no);
+  return {results,sorted};
+}
+
+/* ---- CSV（1団体1行・全審査員素点＋集計） ---- */
+function csvCell(v){v=(v==null?'':String(v));return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},600);}
+function fileBase(){return 'recap_'+EVENT.name.replace(/\s+/g,'_');}
+function exportCSV(){
+  const {results,sorted}=sortedResults();
+  const efcR=rankBy(results,r=>r.efc||0),visR=rankBy(results,r=>r.vis||0),musR=rankBy(results,r=>r.mus||0);
+  const rmap={}; results.forEach((r,i)=>rmap[r.band.id]={efc:efcR[i],vis:visR[i],mus:musR[i]});
+  const caps=[...ORDER_GE,...ORDER_VIS,...ORDER_MUS];
+  const head=['順位','登場順','Division','Category','団体'];
+  caps.forEach(c=>{const j=judgeByCap(c),f=capFields(c);head.push(`${j.name} ${f[0]}`,`${j.name} ${f[1]}`,`${j.name} Ttl`);});
+  head.push('Efc','Efc順位','Vis','Vis順位','Mus','Mus順位','Sub Ttl','CG','Pen','Final','Final順位','賞');
+  const rows=[head];
+  sorted.forEach(r=>{
+    const row=[r.finalRank,r.band.no,r.band.division,r.band.category,r.band.name];
+    caps.forEach(c=>{const rv=rawVals(judgeByCap(c).id,r.band.id);const t=jTtl(judgeByCap(c).id,r.band.id);row.push(rv&&rv[0]!=null?rv[0]:'',rv&&rv[1]!=null?rv[1]:'',t!=null?r2(t).toFixed(2):'');});
+    row.push(r2(r.efc).toFixed(2),rmap[r.band.id].efc,r2(r.vis).toFixed(2),rmap[r.band.id].vis,r2(r.mus).toFixed(2),rmap[r.band.id].mus,
+      r3(r.sub).toFixed(3),r.hasCG?'有':'無',r.pen||0,r3(r.final).toFixed(3),r.finalRank,prizeOf(r.band.division,r.final).label);
+    rows.push(row);
+  });
+  const csv='\uFEFF'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');
+  downloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8;'}),fileBase()+'.csv');
+}
+
+/* ---- Excel（印刷用一般フォーマット） ---- */
+function buildCols(){
+  const cols=[{key:'no',head:'No',w:4},{key:'div',head:'Division',w:9},{key:'cat',head:'Category',w:8},{key:'team',head:'団体',w:30}];
+  const addCap=(cap,fam)=>{const f=capFields(cap);
+    cols.push({kind:'raw',cap,fam,idx:0,head:f[0],w:5});
+    cols.push({kind:'raw',cap,fam,idx:1,head:f[1],w:5});
+    cols.push({kind:'ttl',cap,fam,head:'Ttl',w:6});};
+  ORDER_GE.forEach(c=>addCap(c,'GE')); cols.push({kind:'sub',fam:'GE',sub:'efc',top:'Efc.',mid:'/40',w:7});
+  ORDER_VIS.forEach(c=>addCap(c,'Visual')); cols.push({kind:'sub',fam:'Visual',sub:'vis',top:'Vis.',mid:'/30',w:7});
+  ORDER_MUS.forEach(c=>addCap(c,'Music')); cols.push({kind:'sub',fam:'Music',sub:'mus',top:'Mus.',mid:'/30',w:7});
+  cols.push({kind:'subttl',head:'Sub Ttl.',w:9},{kind:'cg',head:'CG',w:5},{kind:'pen',head:'Pen.',w:6},{kind:'final',head:'Final',w:9});
+  return cols;
+}
+const isNumericCol=col=>['raw','ttl','sub','subttl','final'].includes(col.kind);
+const numFmtFor=col=>col.kind==='raw'?'0':(col.kind==='ttl'||col.kind==='sub')?'0.00':(col.kind==='subttl'||col.kind==='final')?'0.000':'General';
+function valueFor(col,res){
+  const b=res.band;
+  switch(col.kind){
+    case 'raw':{const rv=rawVals(judgeByCap(col.cap).id,b.id);return rv?rv[col.idx]:null;}
+    case 'ttl':return r2(jTtl(judgeByCap(col.cap).id,b.id));
+    case 'sub':return r2(res[col.sub]);
+    case 'subttl':return r3(res.sub);
+    case 'cg':return res.hasCG?'有':'無';
+    case 'pen':return res.pen||0;
+    case 'final':return r3(res.final);
+    default:
+      if(col.key==='no')return b.no; if(col.key==='div')return b.division;
+      if(col.key==='cat')return b.category; if(col.key==='team')return b.name;
+  }
+}
+function buildWorkbook(XLSX){
+  const cols=buildCols(), N=cols.length;
+  const {sorted}=sortedResults();
+  const colRanks=cols.map(col=>{ if(!isNumericCol(col))return null;
+    const vals=sorted.map(r=>valueFor(col,r));
+    return vals.map(v=>v==null?null:1+vals.filter(o=>o!=null&&o>v).length); });
+  const data=[]; const merges=[];
+  const h0=new Array(N).fill(''),h1=new Array(N).fill(''),h2=new Array(N).fill('');
+  h0[0]='No';h0[1]='Division';h0[2]='Category';h0[3]='団体';
+  cols.forEach((col,c)=>{
+    if(col.kind==='raw'&&col.idx===0){h0[c]=GROUP[col.cap];h1[c]=judgeByCap(col.cap).name;}
+    if(col.kind==='raw')h2[c]=col.head;
+    if(col.kind==='ttl')h2[c]='Ttl';
+    if(col.kind==='sub'){h0[c]=col.top;h1[c]=col.mid;h2[c]='Ttl';}
+    if(['subttl','cg','pen','final'].includes(col.kind))h0[c]=col.head;
+  });
+  data.push(h0,h1,h2);
+  for(let c=0;c<4;c++)merges.push({s:{r:0,c},e:{r:2,c}});
+  cols.forEach((col,c)=>{ if(col.kind==='raw'&&col.idx===0){merges.push({s:{r:0,c},e:{r:0,c:c+2}});merges.push({s:{r:1,c},e:{r:1,c:c+2}});} });
+  cols.forEach((col,c)=>{ if(col.kind==='sub')merges.push({s:{r:0,c},e:{r:1,c}}); });
+  cols.forEach((col,c)=>{ if(['subttl','cg','pen','final'].includes(col.kind))merges.push({s:{r:0,c},e:{r:2,c}}); });
+  let R=3;
+  sorted.forEach((res,ri)=>{
+    const rowA=new Array(N).fill(''),rowB=new Array(N).fill('');
+    cols.forEach((col,c)=>{
+      const v=valueFor(col,res);
+      if(['no','div','cat','team'].includes(col.key)){rowA[c]=v;}
+      else{ rowA[c]=(v==null?'':v);
+        if(isNumericCol(col)){const rk=colRanks[c]?colRanks[c][ri]:null;rowB[c]=(rk==null?'':rk);} }
+    });
+    data.push(rowA,rowB);
+    for(let c=0;c<4;c++)merges.push({s:{r:R,c},e:{r:R+1,c}});
+    R+=2;
+  });
+  const maxRow=new Array(N).fill(''); cols.forEach((col,c)=>{if(col.kind==='sub')maxRow[c]=col.mid;}); data.push(maxRow);
+
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  const border={top:{style:'thin',color:{rgb:'C8CEDC'}},bottom:{style:'thin',color:{rgb:'C8CEDC'}},left:{style:'thin',color:{rgb:'C8CEDC'}},right:{style:'thin',color:{rgb:'C8CEDC'}}};
+  const set=(r,c,s,z)=>{const a=XLSX.utils.encode_cell({r,c});if(!ws[a])ws[a]={t:'s',v:''};ws[a].s=s;if(z&&z!=='General')ws[a].z=z;};
+  const headFill=col=>col.fam?FILL[col.fam]:(col.kind==='final'?FILL.final:FILL.label);
+  for(let hr=0;hr<3;hr++)cols.forEach((col,c)=>{
+    let fill=c<4?FILL.label:headFill(col); if(col.kind==='sub')fill=FILL.sub;
+    set(hr,c,{fill:{fgColor:{rgb:fill}},font:{bold:true,sz:8,color:{rgb:INK},name:'Arial'},alignment:{horizontal:'center',vertical:'center',wrapText:true},border});
+  });
+  R=3;
+  sorted.forEach(()=>{ cols.forEach((col,c)=>{
+    let bf=FILL.band; if(col.kind==='final')bf=FILL.final; else if(col.kind==='sub')bf=FILL.subband;
+    const bold=['sub','subttl','final'].includes(col.kind);
+    set(R,c,{fill:{fgColor:{rgb:bf}},font:{bold,sz:9,color:{rgb:INK},name:'Arial'},alignment:{horizontal:c===3?'left':'center',vertical:'center',wrapText:c===3},border},isNumericCol(col)?numFmtFor(col):null);
+    set(R+1,c,{fill:{fgColor:{rgb:FILL.rank}},font:{sz:7,italic:true,color:{rgb:'7A8499'},name:'Arial'},alignment:{horizontal:'center',vertical:'center'},border});
+  }); R+=2; });
+  cols.forEach((col,c)=>set(R,c,{fill:{fgColor:{rgb:'FFFFFF'}},font:{sz:8,italic:true,color:{rgb:'9AA3B5'}},alignment:{horizontal:'center'},border}));
+
+  ws['!cols']=cols.map(col=>({wch:col.w}));
+  ws['!merges']=merges;
+  ws['!freeze']={xSplit:4,ySplit:3};
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'印刷用_一般');
+  return wb;
+}
+
+/* ---- ライブラリ読み込み（装飾版優先→なければ標準版） ---- */
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('load fail'));document.head.appendChild(s);});}
+let _xlsxP=null;
+function ensureXLSX(){
+  if(window.XLSX)return Promise.resolve(window.XLSX);
+  if(_xlsxP)return _xlsxP;
+  _xlsxP=loadScript('https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js').then(()=>window.XLSX)
+    .catch(()=>loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js').then(()=>window.XLSX));
+  return _xlsxP;
+}
+function exportXLSX(){
+  const btn=wrap.querySelector('#exp-xlsx'); const old=btn.innerHTML; btn.textContent='生成中…';
+  ensureXLSX().then(XLSX=>{ XLSX.writeFile(buildWorkbook(XLSX),fileBase()+'.xlsx'); btn.innerHTML=old; })
+  .catch(()=>{btn.innerHTML=old;alert('Excelライブラリの読み込みに失敗しました。オンライン環境で再度お試しください（CSVはオフラインでも出力できます）。');});
+}
+
+async function fetchScores(){
+  try{
+    const res=await fetch(scoresURL); if(!res.ok)throw new Error('HTTP '+res.status);
+    SCORES=(await res.json())||{}; liveOK=true; lastFetch=Date.now();
+  }catch(e){ liveOK=false; }
+  render();
+}
+async function boot(){
+  wrap.innerHTML='<div style="padding:64px 22px;text-align:center;color:#8b96ad;font-family:var(--body)">設定を読み込み中…</div>';
+  try{
+    const res=await fetch(cfgURL); if(!res.ok)throw new Error('HTTP '+res.status);
+    const cfg=await res.json(); if(!cfg||!cfg.captions)throw new Error('config empty');
+    EVENT=cfg.event||EVENT; CAPTIONS=cfg.captions; JUDGES=cfg.judges; BANDS=cfg.bands;
+    PRIZE_RULES={}; (cfg.prizeRules||[]).forEach(r=>{PRIZE_RULES[r.division]={gold:r.gold,silver:r.silver};});
+    Object.keys(admin).forEach(k=>delete admin[k]); BANDS.forEach(b=>admin[b.id]={hasCG:b.hasCG,pen:0});
+    await fetchScores();
+    setInterval(fetchScores,5000);
+  }catch(e){
+    wrap.innerHTML='<div style="padding:52px 24px;text-align:center;color:#e8705a;font-family:var(--body);line-height:1.8">設定を読み込めませんでした。<br>setup.html で設定をアップロード済みか、ネット接続を確認してください。<br><small style="color:#8b96ad">'+(e.message||e)+'</small></div>';
+  }
+}
+boot();
+</script>
+</body>
+</html>
