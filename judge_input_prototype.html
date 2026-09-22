@@ -57,6 +57,9 @@
   .sync-pill{font-family:var(--body);font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;border:1px solid;white-space:nowrap;margin-left:auto;margin-right:10px;}
   .sync-pill.ok{color:var(--signal);border-color:#2f5e58;background:rgba(95,208,197,.08);}
   .sync-pill.wait{color:var(--gold);border-color:var(--gold-dim);background:rgba(242,176,61,.10);}
+  .jdivtabs{display:flex;gap:7px;padding:10px 14px 2px;flex:0 0 auto;}
+  .jdivtab{flex:1;padding:9px 6px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.03em;cursor:pointer;}
+  .jdivtab.active{background:var(--gold);color:#1a1305;border-color:var(--gold);}
 
   /* input zone (scrolls within its own area) */
   .input-zone{flex:1;min-height:0;overflow-y:auto;}
@@ -193,6 +196,9 @@ const FAMILY_LABEL = {GE:"General Effect",Visual:"Visual",Music:"Music"};
 
 const state = { judgeId:null, bandIndex:0, scores:{}, panel:'standings' };
 let EV={name:'Marching Matsuri',date:''};
+let DIVISIONS=[], CLASSES=[], curDiv=null;
+function curBands(){return curDiv?BANDS.filter(b=>b.division===curDiv):BANDS;}
+const clsLabel=b=>(CLASSES.find(c=>c.id===b.classId)||{}).label||'';
 
 /* ============================================================
    Firebase 連携（案A：即時PUT＋自動リトライ＋端末退避）
@@ -247,6 +253,7 @@ async function boot(){
   try{
     const cfg=await loadConfig();
     CAPTIONS=cfg.captions; JUDGES=cfg.judges; BANDS=cfg.bands; EV=cfg.event||EV;
+    DIVISIONS=cfg.divisions||[]; CLASSES=cfg.classes||[]; curDiv=(DIVISIONS[0]||{}).id||null;
     render(); updateSyncUI(); flush();
   }catch(e){
     app.innerHTML='<div style="padding:52px 24px;text-align:center;color:#e8705a;font-family:var(--body);line-height:1.8">設定を読み込めませんでした。<br>ネット接続を確認して再読み込みしてください。<br><small style="color:#8b96ad">'+e.message+'</small></div>';
@@ -265,7 +272,7 @@ function liveTtl(jid,bid){ const cap=capOf(judgeOf(jid)); const e=bandEntry(jid,
   return vals.reduce((a,b)=>a+b,0)/10; }
 
 function computeStandings(jid){
-  const rows = BANDS.map(b=>({band:b, ttl:liveTtl(jid,b.id)}));
+  const rows = curBands().map(b=>({band:b, ttl:liveTtl(jid,b.id)}));
   const entered = rows.filter(r=>r.ttl!=null);
   entered.forEach(r=>{ r.rank = 1 + entered.filter(o=>o.ttl>r.ttl).length; });
   const ent = entered.slice().sort((a,b)=> a.rank-b.rank || a.band.no-b.band.no);
@@ -297,24 +304,35 @@ function renderSelect(){
 }
 
 function renderScoring(){
-  const judge=judgeOf(state.judgeId), cap=capOf(judge), band=BANDS[state.bandIndex];
-  app.innerHTML = `
+  const judge=judgeOf(state.judgeId), cap=capOf(judge);
+  const bands=curBands();
+  if(state.bandIndex>=bands.length)state.bandIndex=0;
+  const band=bands[state.bandIndex];
+  const tabs = DIVISIONS.length>1 ? `<div class="jdivtabs">${DIVISIONS.map(d=>`<button class="jdivtab ${d.id===curDiv?'active':''}" data-jdiv="${d.id}">${d.name}</button>`).join('')}</div>` : '';
+  const head = `
     <div class="topbar"><p class="eyebrow">審査員入力</p><p class="event-name">${EV.name||'Marching Matsuri'}</p></div>
     <div class="judge-strip">
       <div class="who"><span class="n">${judge.name}</span><span class="c">${cap.name}</span></div>
       <span class="sync-pill ok" id="syncpill">同期済み</span>
       <button class="switch-btn" id="switch">審査員を変更</button>
-    </div>
+    </div>${tabs}`;
+  if(!band){
+    app.innerHTML=head+`<div style="padding:56px 22px;text-align:center;color:var(--muted);font-family:var(--body)">この部門には団体がありません。</div>`;
+    app.querySelectorAll('.jdivtab').forEach(b=>b.addEventListener('click',()=>{curDiv=b.dataset.jdiv;state.bandIndex=0;render();}));
+    app.querySelector('#switch').addEventListener('click',()=>{state.judgeId=null;render();});
+    return;
+  }
+  app.innerHTML = head + `
     <div class="scoring">
       <div class="input-zone">
-        <div class="rail">${BANDS.map((b,i)=>{
+        <div class="rail">${bands.map((b,i)=>{
           const cls=i===state.bandIndex?'current':(isBandComplete(judge.id,b.id)?'done':'');
           return `<span class="pip ${cls}"></span>`;}).join('')}</div>
-        <p class="rail-label">入力済み <b>${BANDS.filter(b=>isBandComplete(judge.id,b.id)).length}</b> / ${BANDS.length} 団体</p>
+        <p class="rail-label">入力済み <b>${bands.filter(b=>isBandComplete(judge.id,b.id)).length}</b> / ${bands.length} 団体</p>
         <div class="card">
           <div class="band-head">
             <div class="band-no">NO.${String(band.no).padStart(2,'0')}</div>
-            <div class="band-meta">${band.division}　·　${band.category}${band.hasCG?'　·　CG 有':'　·　CG 無'}</div>
+            <div class="band-meta">${clsLabel(band)}${band.hasCG?'　·　CG 有':'　·　CG 無'}</div>
             <div class="band-name">${band.name}</div>
           </div>
           ${cap.fields.map(f=>{
@@ -333,7 +351,7 @@ function renderScoring(){
         </div>
         <div class="nav">
           <button class="nav-btn" id="prev" ${state.bandIndex===0?'disabled':''}>‹ 前</button>
-          <button class="nav-btn primary" id="next">${state.bandIndex===BANDS.length-1?'最初へ ↺':'次 ›'}</button>
+          <button class="nav-btn primary" id="next">${state.bandIndex===bands.length-1?'最初へ ↺':'次 ›'}</button>
         </div>
       </div>
       <div class="panel">
@@ -355,8 +373,9 @@ function renderScoring(){
     inp.value=clampScore(cur+parseInt(b.dataset.step,10)); onScoreInput(f,inp.value,inp);
   }));
   app.querySelector('#prev').addEventListener('click',()=>{if(state.bandIndex>0){state.bandIndex--;render();}});
-  app.querySelector('#next').addEventListener('click',()=>{state.bandIndex=(state.bandIndex+1)%BANDS.length;render();});
+  app.querySelector('#next').addEventListener('click',()=>{state.bandIndex=(state.bandIndex+1)%bands.length;render();});
   app.querySelector('#switch').addEventListener('click',()=>{state.judgeId=null;render();});
+  app.querySelectorAll('.jdivtab').forEach(b=>b.addEventListener('click',()=>{curDiv=b.dataset.jdiv;state.bandIndex=0;render();}));
   app.querySelectorAll('.ptab').forEach(t=>t.addEventListener('click',()=>{
     state.panel=t.dataset.tab;
     app.querySelectorAll('.ptab').forEach(x=>x.classList.toggle('active',x.dataset.tab===state.panel));
@@ -365,7 +384,7 @@ function renderScoring(){
   // delegated tap-to-jump on standings
   app.querySelector('#panelbody').addEventListener('click',e=>{
     const row=e.target.closest('.st-row'); if(!row)return;
-    const idx=BANDS.findIndex(b=>b.id===row.dataset.bid); if(idx>=0){state.bandIndex=idx;render();}
+    const idx=curBands().findIndex(b=>b.id===row.dataset.bid); if(idx>=0){state.bandIndex=idx;render();}
   });
 
   renderPanel(); updateLive(); updateSyncUI();
@@ -395,7 +414,7 @@ function standingsHTML(){
     ? `<div class="st-warn"><span class="wm">⚠ 同点</span><span>${tieGroups}組の同点があります。順位の確定にご注意ください。</span></div>` : '';
   const header=`<div class="st-headrow"><span></span><span class="h-name">団体</span><span>${f1}</span><span>${f2}</span><span>Ttl</span></div>`;
   const rows=list.map(r=>{
-    const cur=r.band.id===BANDS[state.bandIndex].id;
+    const cur=r.band.id===(curBands()[state.bandIndex]||{}).id;
     const empty=r.ttl==null;
     const tie=!empty && counts[r.ttl]>1;
     const e=bandEntry(judge.id,r.band.id);
@@ -412,7 +431,7 @@ function standingsHTML(){
 }
 
 function onScoreInput(field,value,inputEl){
-  const judge=judgeOf(state.judgeId), band=BANDS[state.bandIndex];
+  const judge=judgeOf(state.judgeId), band=curBands()[state.bandIndex];
   const v=clampScore(value);
   state.scores[judge.id]=state.scores[judge.id]||{};
   state.scores[judge.id][band.id]=state.scores[judge.id][band.id]||{};
@@ -427,7 +446,8 @@ function onScoreInput(field,value,inputEl){
 
 let lastComplete=false;
 function updateLive(checkToast){
-  const judge=judgeOf(state.judgeId), band=BANDS[state.bandIndex];
+  const judge=judgeOf(state.judgeId), band=curBands()[state.bandIndex];
+  if(!band)return;
   const ttl=liveTtl(judge.id,band.id);
   const ttlEl=app.querySelector('#ttl');
   if(ttlEl){ if(ttl==null){ttlEl.textContent='––.––';ttlEl.classList.add('empty');}
@@ -440,7 +460,7 @@ function updateLive(checkToast){
     else{rn.textContent='– 位';rn.classList.add('empty');} }
   // rail + counter
   const pips=app.querySelectorAll('.pip'); let done=0;
-  BANDS.forEach((b,i)=>{const c=isBandComplete(judge.id,b.id);if(c)done++;
+  curBands().forEach((b,i)=>{const c=isBandComplete(judge.id,b.id);if(c)done++;
     if(pips[i])pips[i].className='pip '+(i===state.bandIndex?'current':(c?'done':''));});
   const rl=app.querySelector('.rail-label b'); if(rl)rl.textContent=done;
   // panel refresh
