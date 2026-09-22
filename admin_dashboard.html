@@ -119,7 +119,7 @@ const FB_BASE=FB.DB_URL.replace(/\/+$/,'');
 const cfgURL=`${FB_BASE}/events/${FB.EVENT_ID}/config.json`;
 const scoresURL=`${FB_BASE}/events/${FB.EVENT_ID}/scores.json`;
 let lastFetch=null, liveOK=false;
-const FACTOR={GE:2.0,Visual:1.5,Music:1.5};
+let FACTOR={GE:2.0,Visual:1.5,Music:1.5};
 const FAM_MAX={GE:40,Visual:30,Music:30};
 
 let CAPTIONS=[
@@ -514,6 +514,7 @@ async function boot(){
     const res=await fetch(cfgURL); if(!res.ok)throw new Error('HTTP '+res.status);
     const cfg=await res.json(); if(!cfg||!cfg.captions)throw new Error('config empty');
     EVENT=cfg.event||EVENT; CAPTIONS=cfg.captions; JUDGES=cfg.judges; BANDS=cfg.bands;
+    if(cfg.families){['GE','Visual','Music'].forEach(f=>{if(cfg.families[f]&&cfg.families[f].factor!=null)FACTOR[f]=Number(cfg.families[f].factor);});}
     PRIZE_RULES={}; (cfg.prizeRules||[]).forEach(r=>{PRIZE_RULES[r.division]={gold:r.gold,silver:r.silver};});
     Object.keys(admin).forEach(k=>delete admin[k]); BANDS.forEach(b=>admin[b.id]={hasCG:b.hasCG,pen:0});
     await fetchScores();
