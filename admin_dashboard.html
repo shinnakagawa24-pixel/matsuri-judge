@@ -322,21 +322,18 @@ function render(){
 }
 
 function detailHTML(r){
+  const capsByFam=fam=>CAPTIONS.filter(c=>c.family===fam);
+  const mx=fam=>Math.round(20*(FACTOR[fam]||0));
   const fams=[
-    {key:'GE',label:'General Effect',sub:r.efc,rank:r.efcRank,
-     caps:['ge1','ge2','ge3','ge4'],fields:['Rep','Pfm'],note:'平均 × 2 = /40'},
-    {key:'Visual',label:'Visual',sub:r.vis,rank:r.visRank,
-     caps:r.hasCG?['va1','va2','cg1','cg2']:['va1','va2','cg1','cg2'],fields:['①','②'],
-     note:r.hasCG?'視覚4人平均 × 1.5 = /30':'CG無 → Analysis 2人のみ平均 × 1.5'},
-    {key:'Music',label:'Music',sub:r.mus,rank:r.musRank,
-     caps:['ma1','ma2','mb1','mb2','mp1','mp2'],fields:['Cont','Achv'],note:'平均 × 1.5 = /30'}
+    {key:'GE',label:'General Effect',sub:r.efc,rank:r.efcRank,note:`平均 × ${FACTOR.GE} = /${mx('GE')}`},
+    {key:'Visual',label:'Visual',sub:r.vis,rank:r.visRank,note:r.hasCG?`視覚 平均 × ${FACTOR.Visual} = /${mx('Visual')}`:`CG無 → Analysis のみ平均 × ${FACTOR.Visual}`},
+    {key:'Music',label:'Music',sub:r.mus,rank:r.musRank,note:`平均 × ${FACTOR.Music} = /${mx('Music')}`}
   ];
   return `<div class="fam-grid">${fams.map(f=>{
-    const rows=f.caps.map(cid=>{
-      const j=judgeByCap(cid); const t=jTtl(j.id,r.band.id);
-      const rv=rawVals(j.id,r.band.id);
-      const capIsCG=(CAPTIONS.find(c=>c.id===cid)||{}).isCG;
-      const counted=(f.key!=='Visual')||r.hasCG||!capIsCG;
+    const rows=capsByFam(f.key).map(cap=>{
+      const j=judgeByCap(cap.id); if(!j)return '';
+      const t=jTtl(j.id,r.band.id); const rv=rawVals(j.id,r.band.id);
+      const counted=(f.key!=='Visual')||r.hasCG||!cap.isCG;
       return `<div class="jrow ${counted?'':'muted'}"><span class="jn">${j.name}</span>
         <span class="jraw">${rv?`${rv[0]==null?'–':rv[0]}/${rv[1]==null?'–':rv[1]}`:'–'} → ${t!=null?t.toFixed(2):'–'}</span></div>`;
     }).join('');
@@ -348,14 +345,11 @@ function detailHTML(r){
 }
 
 /* ===================== 出力（CSV / Excel印刷用） ===================== */
-const ORDER_GE=['ge1','ge2','ge3','ge4'];
-const ORDER_VIS=['va1','va2','cg1','cg2'];
-const ORDER_MUS=['ma1','ma2','mb1','mb2','mp1','mp2'];
-const GROUP={ge1:'G.E.1',ge2:'G.E.2',ge3:'G.E.3',ge4:'G.E.4',
-  va1:'Visual Analysis 1',va2:'Visual Analysis 2',cg1:'Color Guard 1',cg2:'Color Guard 2',
-  ma1:'Music Analysis 1',ma2:'Music Analysis 2',mb1:'Music Perc. Battery 1',mb2:'Music Perc. Battery 2',
-  mp1:'Music Perc. Pit 1',mp2:'Music Perc. Pit 2'};
-function capFields(cap){if(cap.startsWith('ge'))return['Rep','Pfm'];if(cap==='cg1'||cap==='cg2')return['Sbst','Achv'];return['Cont','Achv'];}
+const orderedCaps=fam=>CAPTIONS.filter(c=>c.family===fam);
+const allOrderedCaps=()=>[...orderedCaps('GE'),...orderedCaps('Visual'),...orderedCaps('Music')];
+const capById=id=>CAPTIONS.find(c=>c.id===id);
+const capName=cap=>cap.name||'';
+const capFieldLabels=cap=>[(cap.fields&&cap.fields[0])||'①',(cap.fields&&cap.fields[1])||'②'];
 const FILL={GE:'FCEACB',Visual:'D2EAE6',Music:'DCE1F2',sub:'EFE3C6',label:'E9ECF3',final:'F2C879',rank:'F4F6FA',band:'FFFFFF',subband:'FBF6EA'};
 const INK='1A2332';
 
@@ -378,14 +372,14 @@ function exportCSV(){
   const {results,sorted}=sortedResults();
   const efcR=rankBy(results,r=>r.efc||0),visR=rankBy(results,r=>r.vis||0),musR=rankBy(results,r=>r.mus||0);
   const rmap={}; results.forEach((r,i)=>rmap[r.band.id]={efc:efcR[i],vis:visR[i],mus:musR[i]});
-  const caps=[...ORDER_GE,...ORDER_VIS,...ORDER_MUS];
+  const caps=allOrderedCaps();
   const head=['順位','登場順','Division','Category','団体'];
-  caps.forEach(c=>{const j=judgeByCap(c),f=capFields(c);head.push(`${j.name} ${f[0]}`,`${j.name} ${f[1]}`,`${j.name} Ttl`);});
+  caps.forEach(cap=>{const j=judgeByCap(cap.id);const f=capFieldLabels(cap);const jn=j?j.name:capName(cap);head.push(`${jn} ${f[0]}`,`${jn} ${f[1]}`,`${jn} Ttl`);});
   head.push('Efc','Efc順位','Vis','Vis順位','Mus','Mus順位','Sub Ttl','CG','Pen','Final','Final順位','賞');
   const rows=[head];
   sorted.forEach(r=>{
     const row=[r.finalRank,r.band.no,r.band.division,r.band.category,r.band.name];
-    caps.forEach(c=>{const rv=rawVals(judgeByCap(c).id,r.band.id);const t=jTtl(judgeByCap(c).id,r.band.id);row.push(rv&&rv[0]!=null?rv[0]:'',rv&&rv[1]!=null?rv[1]:'',t!=null?r2(t).toFixed(2):'');});
+    caps.forEach(cap=>{const j=judgeByCap(cap.id);const jid=j&&j.id;const rv=jid?rawVals(jid,r.band.id):null;const t=jid?jTtl(jid,r.band.id):null;row.push(rv&&rv[0]!=null?rv[0]:'',rv&&rv[1]!=null?rv[1]:'',t!=null?r2(t).toFixed(2):'');});
     row.push(r.efc==null?'':r2(r.efc).toFixed(2),rmap[r.band.id].efc,r.vis==null?'':r2(r.vis).toFixed(2),rmap[r.band.id].vis,r.mus==null?'':r2(r.mus).toFixed(2),rmap[r.band.id].mus,
       r3(r.sub).toFixed(3),r.hasCG?'有':'無',r.pen||0,r3(r.final).toFixed(3),r.finalRank,prizeOf(r.band.division,r.final).label);
     rows.push(row);
@@ -397,13 +391,14 @@ function exportCSV(){
 /* ---- Excel（印刷用一般フォーマット） ---- */
 function buildCols(){
   const cols=[{key:'no',head:'No',w:4},{key:'div',head:'Division',w:9},{key:'cat',head:'Category',w:8},{key:'team',head:'団体',w:30}];
-  const addCap=(cap,fam)=>{const f=capFields(cap);
-    cols.push({kind:'raw',cap,fam,idx:0,head:f[0],w:5});
-    cols.push({kind:'raw',cap,fam,idx:1,head:f[1],w:5});
-    cols.push({kind:'ttl',cap,fam,head:'Ttl',w:6});};
-  ORDER_GE.forEach(c=>addCap(c,'GE')); cols.push({kind:'sub',fam:'GE',sub:'efc',top:'Efc.',mid:'/40',w:7});
-  ORDER_VIS.forEach(c=>addCap(c,'Visual')); cols.push({kind:'sub',fam:'Visual',sub:'vis',top:'Vis.',mid:'/30',w:7});
-  ORDER_MUS.forEach(c=>addCap(c,'Music')); cols.push({kind:'sub',fam:'Music',sub:'mus',top:'Mus.',mid:'/30',w:7});
+  const mx=fam=>Math.round(20*(FACTOR[fam]||0));
+  const addCap=(cap,fam)=>{const f=capFieldLabels(cap);
+    cols.push({kind:'raw',capId:cap.id,fam,idx:0,head:f[0],w:5});
+    cols.push({kind:'raw',capId:cap.id,fam,idx:1,head:f[1],w:5});
+    cols.push({kind:'ttl',capId:cap.id,fam,head:'Ttl',w:6});};
+  orderedCaps('GE').forEach(c=>addCap(c,'GE')); cols.push({kind:'sub',fam:'GE',sub:'efc',top:'Efc.',mid:'/'+mx('GE'),w:7});
+  orderedCaps('Visual').forEach(c=>addCap(c,'Visual')); cols.push({kind:'sub',fam:'Visual',sub:'vis',top:'Vis.',mid:'/'+mx('Visual'),w:7});
+  orderedCaps('Music').forEach(c=>addCap(c,'Music')); cols.push({kind:'sub',fam:'Music',sub:'mus',top:'Mus.',mid:'/'+mx('Music'),w:7});
   cols.push({kind:'subttl',head:'Sub Ttl.',w:9},{kind:'cg',head:'CG',w:5},{kind:'pen',head:'Pen.',w:6},{kind:'final',head:'Final',w:9});
   return cols;
 }
@@ -412,8 +407,8 @@ const numFmtFor=col=>col.kind==='raw'?'0':(col.kind==='ttl'||col.kind==='sub')?'
 function valueFor(col,res){
   const b=res.band;
   switch(col.kind){
-    case 'raw':{const rv=rawVals(judgeByCap(col.cap).id,b.id);return rv?rv[col.idx]:null;}
-    case 'ttl':return r2(jTtl(judgeByCap(col.cap).id,b.id));
+    case 'raw':{const j=judgeByCap(col.capId);const rv=j?rawVals(j.id,b.id):null;return rv?rv[col.idx]:null;}
+    case 'ttl':{const j=judgeByCap(col.capId);return j?r2(jTtl(j.id,b.id)):null;}
     case 'sub':return r2(res[col.sub]);
     case 'subttl':return r3(res.sub);
     case 'cg':return res.hasCG?'有':'無';
@@ -434,7 +429,7 @@ function buildWorkbook(XLSX){
   const h0=new Array(N).fill(''),h1=new Array(N).fill(''),h2=new Array(N).fill('');
   h0[0]='No';h0[1]='Division';h0[2]='Category';h0[3]='団体';
   cols.forEach((col,c)=>{
-    if(col.kind==='raw'&&col.idx===0){h0[c]=GROUP[col.cap];h1[c]=judgeByCap(col.cap).name;}
+    if(col.kind==='raw'&&col.idx===0){const cap=capById(col.capId);const j=judgeByCap(col.capId);h0[c]=cap?capName(cap):'';h1[c]=j?j.name:'';}
     if(col.kind==='raw')h2[c]=col.head;
     if(col.kind==='ttl')h2[c]='Ttl';
     if(col.kind==='sub'){h0[c]=col.top;h1[c]=col.mid;h2[c]='Ttl';}
