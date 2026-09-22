@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>審査員入力 — 2025 YOKOHAMA Final</title>
+<title>審査員入力 — Marching Matsuri Judge</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Inter:wght@400;500;600&display=swap');
 
@@ -192,6 +192,7 @@ let BANDS = [
 const FAMILY_LABEL = {GE:"General Effect",Visual:"Visual",Music:"Music"};
 
 const state = { judgeId:null, bandIndex:0, scores:{}, panel:'standings' };
+let EV={name:'Marching Matsuri',date:''};
 
 /* ============================================================
    Firebase 連携（案A：即時PUT＋自動リトライ＋端末退避）
@@ -245,7 +246,7 @@ async function boot(){
   app.innerHTML='<div style="padding:64px 22px;text-align:center;color:#8b96ad;font-family:var(--body)">設定を読み込み中…</div>';
   try{
     const cfg=await loadConfig();
-    CAPTIONS=cfg.captions; JUDGES=cfg.judges; BANDS=cfg.bands;
+    CAPTIONS=cfg.captions; JUDGES=cfg.judges; BANDS=cfg.bands; EV=cfg.event||EV;
     render(); updateSyncUI(); flush();
   }catch(e){
     app.innerHTML='<div style="padding:52px 24px;text-align:center;color:#e8705a;font-family:var(--body);line-height:1.8">設定を読み込めませんでした。<br>ネット接続を確認して再読み込みしてください。<br><small style="color:#8b96ad">'+e.message+'</small></div>';
@@ -279,7 +280,7 @@ function renderSelect(){
   const groups={GE:[],Visual:[],Music:[]};
   JUDGES.forEach(j=>groups[capOf(j).family].push(j));
   app.innerHTML = `
-    <div class="topbar"><p class="eyebrow">審査員入力</p><p class="event-name">2025 YOKOHAMA Final</p></div>
+    <div class="topbar"><p class="eyebrow">審査員入力</p><p class="event-name">${EV.name||'Marching Matsuri'}</p></div>
     <div class="select-wrap">
       <p class="select-lead">担当の<b>お名前を選んでください</b>。ログインは不要です。選ぶと、担当キャプションに合わせた入力画面に進みます。</p>
       ${Object.keys(groups).map(fam=>`
@@ -298,7 +299,7 @@ function renderSelect(){
 function renderScoring(){
   const judge=judgeOf(state.judgeId), cap=capOf(judge), band=BANDS[state.bandIndex];
   app.innerHTML = `
-    <div class="topbar"><p class="eyebrow">審査員入力</p><p class="event-name">2025 YOKOHAMA Final</p></div>
+    <div class="topbar"><p class="eyebrow">審査員入力</p><p class="event-name">${EV.name||'Marching Matsuri'}</p></div>
     <div class="judge-strip">
       <div class="who"><span class="n">${judge.name}</span><span class="c">${cap.name}</span></div>
       <span class="sync-pill ok" id="syncpill">同期済み</span>
