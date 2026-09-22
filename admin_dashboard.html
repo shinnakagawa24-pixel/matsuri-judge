@@ -46,6 +46,19 @@
   .subs-cell.full .sc{color:var(--signal);}
   .subs-cell.partial .sc{color:var(--gold);}
 
+  .divtabs{display:flex;gap:8px;margin:0 0 16px;flex-wrap:wrap;}
+  .divtab{padding:9px 17px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.05em;cursor:pointer;}
+  .divtab:hover{border-color:var(--gold-dim);color:var(--ink);}
+  .divtab.active{background:var(--gold);color:#1a1305;border-color:var(--gold);}
+
+  .awards{border:1px solid var(--gold-dim);border-radius:12px;background:rgba(242,176,61,.06);padding:13px 15px;margin:18px 0;}
+  .awards-head{font-family:var(--display);font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:12px;color:var(--gold);margin-bottom:10px;}
+  .awards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;}
+  .award-cell{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel);}
+  .award-cell .ag{font-size:10.5px;color:var(--muted);font-family:var(--display);letter-spacing:.06em;text-transform:uppercase;}
+  .award-cell .an{font-size:13.5px;font-weight:600;}
+  .award-cell .af{font-family:var(--mono);font-size:12px;color:var(--gold);}
+
   .toolbar{display:flex;gap:10px;justify-content:flex-end;margin-bottom:14px;flex-wrap:wrap;}
   .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:border-color .15s,transform .06s;}
   .btn:hover{border-color:var(--gold-dim);}
@@ -148,12 +161,11 @@ let BANDS=[
   {id:"b6",no:6,division:"MB/大",name:"Yokohama INSPIRES Drum & Bugle Corps",hasCG:true},
   {id:"b7",no:7,division:"MB/大",name:"YOKOHAMA ROBINS",hasCG:true}
 ];
-/* 賞カットライン（大会ごとに設定で変更可：今はサンプル値） */
-let PRIZE_RULES={
-  "MB/小":{gold:80,silver:61},
-  "MB/中":{gold:85,silver:61},
-  "MB/大":{gold:90,silver:61}
-};
+/* 賞・部門・区分（configから読み込み） */
+let PRIZE_BY_CLASS={};   // classId -> {gold,silver,bronze}
+let DIVISIONS=[], CLASSES=[], AWARD_GROUPS={}, curDiv=null;
+const classById=id=>CLASSES.find(c=>c.id===id);
+const divName=id=>(DIVISIONS.find(d=>d.id===id)||{}).name||id;
 /* 公式記録の Final（検証用の答え合わせ） */
 const EXPECTED={b1:82.063,b2:85.413,b3:87.188,b4:90.663,b5:92.613,b6:94.125,b7:96.200};
 
@@ -215,17 +227,19 @@ const f3=x=>x==null?'—':(Math.round(x*1000)/1000).toFixed(3);
 function rankBy(arr,getter){ // RANK.EQ（降順・同点同順位）
   return arr.map(o=>1+arr.filter(p=>getter(p)>getter(o)).length);
 }
-function prizeOf(division,final){
-  const r=PRIZE_RULES[division]; if(!r) return {label:'—',cls:'none'};
+function prizeOf(band,final){
+  const r=PRIZE_BY_CLASS[band&&band.classId]; if(!r||final==null) return {label:'—',cls:'none'};
   if(final>=r.gold)   return {label:'金賞',cls:'gold'};
   if(final>=r.silver) return {label:'銀賞',cls:'silver'};
+  if(r.bronze!=null&&final>=r.bronze) return {label:'銅賞',cls:'bronze'};
   return {label:'—',cls:'none'};
 }
 
 /* ===================== 描画 ===================== */
 const wrap=document.getElementById('wrap');
 function render(){
-  const results=BANDS.map(bandResult);
+  const divBands=BANDS.filter(b=>b.division===curDiv);
+  const results=divBands.map(bandResult);
   const finalRank=rankBy(results,r=>r.final);
   const efcRank  =rankBy(results,r=>r.efc||0);
   const visRank  =rankBy(results,r=>r.vis||0);
@@ -240,9 +254,19 @@ function render(){
 
   const checkHTML=`<div class="check ${liveOK?'ok':'bad'}"><span class="badge">${liveOK?'● ライブ同期中':'○ 接続待ち'}</span><small>${liveOK?('最終取得 '+(lastFetch?new Date(lastFetch).toLocaleTimeString('ja-JP'):'—')+'　·　5秒ごとに自動更新'):'Firebaseからスコアを取得しています…'}</small></div>`;
 
-  const subs=JUDGES.map(j=>{const done=BANDS.filter(b=>{const rv=rawVals(j.id,b.id);return rv&&rv.every(v=>v!=null);}).length;return {j,done,total:BANDS.length};});
+  const subs=JUDGES.map(j=>{const done=divBands.filter(b=>{const rv=rawVals(j.id,b.id);return rv&&rv.every(v=>v!=null);}).length;return {j,done,total:divBands.length};});
   const totalDone=subs.reduce((a,s)=>a+s.done,0);
-  const subsHTML=`<div class="subs"><div class="subs-head">提出状況 <span>${totalDone} / ${JUDGES.length*BANDS.length} 入力</span></div><div class="subs-grid">${subs.map(s=>`<div class="subs-cell ${s.done===s.total?'full':(s.done>0?'partial':'none')}"><span class="sj">${s.j.name}</span><span class="sc">${s.done}/${s.total}</span></div>`).join('')}</div></div>`;
+  const subsHTML=`<div class="subs"><div class="subs-head">提出状況 <span>${totalDone} / ${JUDGES.length*divBands.length} 入力</span></div><div class="subs-grid">${subs.map(s=>`<div class="subs-cell ${s.done===s.total&&s.total>0?'full':(s.done>0?'partial':'none')}"><span class="sj">${s.j.name}</span><span class="sc">${s.done}/${s.total}</span></div>`).join('')}</div></div>`;
+
+  const tabsHTML=`<div class="divtabs">${DIVISIONS.map(d=>`<button class="divtab ${d.id===curDiv?'active':''}" data-divtab="${d.id}">${d.name}</button>`).join('')}</div>`;
+
+  const awards=(AWARD_GROUPS[curDiv]||[]).map(g=>{
+    const inG=results.filter(r=>r.band.awardGroup===g && r.final!=null);
+    const top=inG.slice().sort((a,b)=>b.final-a.final)[0]||null;
+    return {group:g,top};
+  });
+  const awardsHTML=(AWARD_GROUPS[curDiv]||[]).length
+    ? `<div class="awards"><div class="awards-head">特別表彰 — ${divName(curDiv)}（グループ1位）</div><div class="awards-grid">${awards.map(a=>`<div class="award-cell"><span class="ag">${a.group}</span>${a.top?`<span class="an">${a.top.band.name}</span><span class="af">${f3(a.top.final)}</span>`:'<span class="an" style="color:var(--muted)">—</span>'}</div>`).join('')}</div></div>` : '';
 
   const tieHTML=tieGroups>0
     ? `<div class="tie-warn"><span class="wm">⚠ 同点</span>Final が同点の組が ${tieGroups}組あります（順位確定にご注意）。</div>`:'';
@@ -252,9 +276,10 @@ function render(){
       <div>
         <p class="eyebrow">管理者集計</p>
         <h1 class="title">${EVENT.name}</h1>
-        <p class="sub">${EVENT.date}　·　一般部門　·　集計 <span class="count">${BANDS.length}</span> 団体</p>
+        <p class="sub">${EVENT.date}　·　${divName(curDiv)}　·　集計 <span class="count">${divBands.length}</span> 団体</p>
       </div>
     </div>
+    ${tabsHTML}
     ${checkHTML}
     ${tieHTML}
     ${subsHTML}
@@ -272,12 +297,12 @@ function render(){
         <tbody>
           ${sorted.map(r=>{
             const tie=fcounts[r3(r.final)]>1;
-            const pz=prizeOf(r.band.division,r.final);
+            const pz=prizeOf(r.band,r.final);
             return `
             <tr class="band-row ${tie?'tie':''}" data-bid="${r.band.id}">
               <td class="c-rank">${r.finalRank}</td>
               <td class="c-team"><span class="caret">▶</span><span class="c-no">${String(r.band.no).padStart(2,'0')}</span>　${r.band.name}${tie?'<span class="tieflag">⚠</span>':''}</td>
-              <td class="c-div">${r.band.division}</td>
+              <td class="c-div">${(classById(r.band.classId)||{}).label||r.band.division}</td>
               <td><span class="sc">${f2(r.efc)}<span class="rk">${r.efcRank}位</span></span></td>
               <td><span class="sc">${f2(r.vis)}<span class="rk">${r.visRank}位</span></span></td>
               <td><span class="sc">${f2(r.mus)}<span class="rk">${r.musRank}位</span></span></td>
@@ -291,6 +316,7 @@ function render(){
         </tbody>
       </table>
     </div>
+    ${awardsHTML}
     <p class="legend">
       <code>Ttl = (素点1 + 素点2) ÷ 10</code>　
       <code>Efc. = GE審査員Ttlの平均 × 2</code>　
@@ -317,6 +343,7 @@ function render(){
       admin[inp.dataset.pen].pen=v; render();
     });
   });
+  wrap.querySelectorAll('.divtab').forEach(b=>b.addEventListener('click',()=>{curDiv=b.dataset.divtab;render();}));
   wrap.querySelector('#exp-csv').addEventListener('click',exportCSV);
   wrap.querySelector('#exp-xlsx').addEventListener('click',exportXLSX);
 }
@@ -354,7 +381,7 @@ const FILL={GE:'FCEACB',Visual:'D2EAE6',Music:'DCE1F2',sub:'EFE3C6',label:'E9ECF
 const INK='1A2332';
 
 function sortedResults(){
-  const results=BANDS.map(bandResult);
+  const results=BANDS.filter(b=>b.division===curDiv).map(bandResult);
   const fr=rankBy(results,r=>r.final);
   results.forEach((r,i)=>r.finalRank=fr[i]);
   results.efcRank=rankBy(results,r=>r.efc||0);
@@ -373,15 +400,15 @@ function exportCSV(){
   const efcR=rankBy(results,r=>r.efc||0),visR=rankBy(results,r=>r.vis||0),musR=rankBy(results,r=>r.mus||0);
   const rmap={}; results.forEach((r,i)=>rmap[r.band.id]={efc:efcR[i],vis:visR[i],mus:musR[i]});
   const caps=allOrderedCaps();
-  const head=['順位','登場順','Division','Category','団体'];
+  const head=['順位','登場順','部門','区分','特別表彰','団体'];
   caps.forEach(cap=>{const j=judgeByCap(cap.id);const f=capFieldLabels(cap);const jn=j?j.name:capName(cap);head.push(`${jn} ${f[0]}`,`${jn} ${f[1]}`,`${jn} Ttl`);});
   head.push('Efc','Efc順位','Vis','Vis順位','Mus','Mus順位','Sub Ttl','CG','Pen','Final','Final順位','賞');
   const rows=[head];
   sorted.forEach(r=>{
-    const row=[r.finalRank,r.band.no,r.band.division,r.band.category,r.band.name];
+    const row=[r.finalRank,r.band.no,divName(r.band.division),(classById(r.band.classId)||{}).label||'',r.band.awardGroup||'',r.band.name];
     caps.forEach(cap=>{const j=judgeByCap(cap.id);const jid=j&&j.id;const rv=jid?rawVals(jid,r.band.id):null;const t=jid?jTtl(jid,r.band.id):null;row.push(rv&&rv[0]!=null?rv[0]:'',rv&&rv[1]!=null?rv[1]:'',t!=null?r2(t).toFixed(2):'');});
     row.push(r.efc==null?'':r2(r.efc).toFixed(2),rmap[r.band.id].efc,r.vis==null?'':r2(r.vis).toFixed(2),rmap[r.band.id].vis,r.mus==null?'':r2(r.mus).toFixed(2),rmap[r.band.id].mus,
-      r3(r.sub).toFixed(3),r.hasCG?'有':'無',r.pen||0,r3(r.final).toFixed(3),r.finalRank,prizeOf(r.band.division,r.final).label);
+      r3(r.sub).toFixed(3),r.hasCG?'有':'無',r.pen||0,r3(r.final).toFixed(3),r.finalRank,prizeOf(r.band,r.final).label);
     rows.push(row);
   });
   const csv='\uFEFF'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');
@@ -415,8 +442,8 @@ function valueFor(col,res){
     case 'pen':return res.pen||0;
     case 'final':return r3(res.final);
     default:
-      if(col.key==='no')return b.no; if(col.key==='div')return b.division;
-      if(col.key==='cat')return b.category; if(col.key==='team')return b.name;
+      if(col.key==='no')return b.no; if(col.key==='div')return (classById(b.classId)||{}).label||b.division;
+      if(col.key==='cat')return b.awardGroup||''; if(col.key==='team')return b.name;
   }
 }
 function buildWorkbook(XLSX){
@@ -510,7 +537,10 @@ async function boot(){
     const cfg=await res.json(); if(!cfg||!cfg.captions)throw new Error('config empty');
     EVENT=cfg.event||EVENT; CAPTIONS=cfg.captions; JUDGES=cfg.judges; BANDS=cfg.bands;
     if(cfg.families){['GE','Visual','Music'].forEach(f=>{if(cfg.families[f]&&cfg.families[f].factor!=null)FACTOR[f]=Number(cfg.families[f].factor);});}
-    PRIZE_RULES={}; (cfg.prizeRules||[]).forEach(r=>{PRIZE_RULES[r.division]={gold:r.gold,silver:r.silver};});
+    DIVISIONS=(cfg.divisions&&cfg.divisions.length)?cfg.divisions:[{id:'mb',name:'MB部門'}];
+    CLASSES=cfg.classes||[]; AWARD_GROUPS=cfg.awardGroups||{};
+    PRIZE_BY_CLASS={}; (cfg.prizeRules||[]).forEach(r=>{if(r.classId)PRIZE_BY_CLASS[r.classId]={gold:r.gold,silver:r.silver,bronze:r.bronze};});
+    curDiv=(DIVISIONS[0]||{}).id||null;
     Object.keys(admin).forEach(k=>delete admin[k]); BANDS.forEach(b=>admin[b.id]={hasCG:b.hasCG,pen:0});
     await fetchScores();
     setInterval(fetchScores,5000);
