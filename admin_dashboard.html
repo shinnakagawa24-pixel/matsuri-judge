@@ -31,6 +31,19 @@
   .check .badge{font-family:var(--display);font-weight:700;letter-spacing:.05em;font-size:13px;white-space:nowrap;}
   .check small{color:var(--muted);font-size:11.5px;}
 
+  .confirm{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;border-radius:12px;margin-bottom:16px;border:1px solid;flex-wrap:wrap;}
+  .cf-label{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.02em;}
+  .confirm.waiting{border-color:var(--line);background:var(--panel);} .confirm.waiting .cf-label{color:var(--muted);}
+  .confirm.ready{border-color:var(--signal);background:rgba(95,208,197,.08);} .confirm.ready .cf-label{color:var(--signal);}
+  .confirm.confirmed{border-color:#3fbf6f;background:rgba(63,191,111,.14);} .confirm.confirmed .cf-label{color:#7fe6a3;}
+  .confirm.stale{border-color:var(--danger);background:rgba(232,112,90,.12);} .confirm.stale .cf-label{color:var(--danger);}
+  .cf-btn{font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.05em;text-transform:uppercase;padding:11px 20px;border-radius:10px;border:1px solid var(--gold);background:var(--gold);color:#1a1305;cursor:pointer;white-space:nowrap;}
+  .cf-btn:active{transform:scale(.98);}
+  .cf-btn.unlock{background:transparent;color:var(--ink);border-color:var(--line);}
+  .cf-btn.dis,.cf-btn[disabled]{opacity:.4;cursor:not-allowed;background:var(--panel-2);color:var(--muted);border-color:var(--line);}
+  .btn.locked,.btn[disabled]{opacity:.4;cursor:not-allowed;}
+  .lock-note{display:flex;align-items:center;font-size:11.5px;color:var(--muted);margin-right:auto;}
+
   .tie-warn{display:flex;align-items:center;gap:9px;padding:10px 14px;border:1px solid var(--danger);background:rgba(232,112,90,.10);border-radius:11px;color:var(--danger);font-size:12.5px;font-weight:600;margin-bottom:16px;}
   .tie-warn .wm{font-family:var(--display);letter-spacing:.06em;}
 
@@ -58,6 +71,18 @@
   .award-cell .ag{font-size:10.5px;color:var(--muted);font-family:var(--display);letter-spacing:.06em;text-transform:uppercase;}
   .award-cell .an{font-size:13.5px;font-weight:600;}
   .award-cell .af{font-family:var(--mono);font-size:12px;color:var(--gold);}
+
+  .mawards{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:14px 16px;margin:18px 0;}
+  .mawards-head{display:flex;align-items:center;justify-content:space-between;font-family:var(--display);font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:12px;color:var(--ink);}
+  .msave-btn{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase;padding:7px 14px;border-radius:9px;border:1px solid var(--gold);background:var(--gold);color:#1a1305;cursor:pointer;}
+  .msave-btn:active{transform:scale(.98);}
+  .mawards-note{font-size:11.5px;color:var(--muted);margin:7px 0 12px;line-height:1.5;}
+  .mawards-empty{font-size:12px;color:var(--muted);margin:6px 0;}
+  .mawards-row{display:grid;grid-template-columns:1fr 1.3fr auto;gap:8px;margin-bottom:8px;}
+  .ma-in{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;color:var(--ink);font-family:var(--body);font-size:13.5px;padding:9px 11px;outline:none;}
+  .ma-in:focus{border-color:var(--gold);}
+  .madd-btn{border:1px dashed var(--line);background:transparent;color:var(--muted);border-radius:9px;padding:9px;width:100%;cursor:pointer;font-family:var(--body);font-size:13px;margin-top:2px;}
+  .madd-btn:hover{border-color:var(--gold-dim);color:var(--ink);}
 
   .toolbar{display:flex;gap:10px;justify-content:flex-end;margin-bottom:14px;flex-wrap:wrap;}
   .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:border-color .15s,transform .06s;}
@@ -131,6 +156,24 @@ const FB={DB_URL:"https://marching-matsuri-judge-default-rtdb.asia-southeast1.fi
 const FB_BASE=FB.DB_URL.replace(/\/+$/,'');
 const cfgURL=`${FB_BASE}/events/${FB.EVENT_ID}/config.json`;
 const scoresURL=`${FB_BASE}/events/${FB.EVENT_ID}/scores.json`;
+const manualURL=`${FB_BASE}/events/${FB.EVENT_ID}/manualAwards.json`;
+const confirmURL=`${FB_BASE}/events/${FB.EVENT_ID}/confirmed.json`;
+let MANUAL_AWARDS=[];
+let CONFIRM={state:'none',hash:null,at:null};
+const ADMIN_OVERRIDE=new URLSearchParams(location.search).get('admin')==='1';
+function scoreHash(sc){
+  sc=sc||{}; const parts=[];
+  Object.keys(sc).sort().forEach(jid=>{const bs=sc[jid]||{};
+    Object.keys(bs).sort().forEach(bid=>{const e=bs[bid]||{};
+      Object.keys(e).sort().forEach(f=>parts.push(jid+':'+bid+':'+f+'='+e[f]));});});
+  const str=parts.join('|'); let h=5381;
+  for(let i=0;i<str.length;i++){h=((h<<5)+h+str.charCodeAt(i))>>>0;} return String(h);
+}
+function missingCount(){let m=0;BANDS.forEach(b=>JUDGES.forEach(j=>{const rv=rawVals(j.id,b.id);if(!(rv&&rv.every(v=>v!=null)))m++;}));return m;}
+function putConfirm(){return fetch(confirmURL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(CONFIRM)}).catch(()=>{});}
+async function doConfirm(){CONFIRM={state:'confirmed',hash:scoreHash(SCORES),at:Date.now()};await putConfirm();render();}
+async function doUnconfirm(){CONFIRM={state:'none',hash:null,at:null};await putConfirm();render();}
+const esc=s=>String(s==null?'':s).replace(/"/g,'&quot;');
 let lastFetch=null, liveOK=false;
 let FACTOR={GE:2.0,Visual:1.5,Music:1.5};
 const FAM_MAX={GE:40,Visual:30,Music:30};
@@ -267,9 +310,44 @@ function render(){
   });
   const awardsHTML=(AWARD_GROUPS[curDiv]||[]).length
     ? `<div class="awards"><div class="awards-head">特別表彰 — ${divName(curDiv)}（グループ1位）</div><div class="awards-grid">${awards.map(a=>`<div class="award-cell"><span class="ag">${a.group}</span>${a.top?`<span class="an">${a.top.band.name}</span><span class="af">${f3(a.top.final)}</span>`:'<span class="an" style="color:var(--muted)">—</span>'}</div>`).join('')}</div></div>` : '';
+  const manualHTML=`<div class="mawards">
+    <div class="mawards-head"><span>特別賞（手動入力）</span><button class="msave-btn" id="msave">保存</button></div>
+    <p class="mawards-note">スコアと無関係の賞（Fans Favorite / Rising Star など）。名前と受賞者を入れて保存すると全端末に残ります。</p>
+    <div class="mawards-list">${MANUAL_AWARDS.length?MANUAL_AWARDS.map((a,i)=>`
+      <div class="mawards-row">
+        <input class="ma-in" data-mi="${i}" data-mf="name" value="${esc(a.name)}" placeholder="賞名（例：Fans Favorite）">
+        <input class="ma-in" list="ma-bands" data-mi="${i}" data-mf="recipient" value="${esc(a.recipient)}" placeholder="受賞者・団体">
+        <button class="icobtn del" data-mdel="${i}">✕</button>
+      </div>`).join(''):'<p class="mawards-empty">まだありません。「＋ 特別賞を追加」で作成できます。</p>'}</div>
+    <button class="madd-btn" id="madd">＋ 特別賞を追加</button>
+    <datalist id="ma-bands">${BANDS.map(b=>`<option value="${esc(b.name)}"></option>`).join('')}</datalist>
+  </div>`;
 
   const tieHTML=tieGroups>0
     ? `<div class="tie-warn"><span class="wm">⚠ 同点</span>Final が同点の組が ${tieGroups}組あります（順位確定にご注意）。</div>`:'';
+
+  const missing=missingCount();
+  const complete=missing===0;
+  const total=JUDGES.length*BANDS.length;
+  const canDownload=ADMIN_OVERRIDE||CONFIRM.state==='confirmed';
+  let cfCls,cfLabel,cfBtn;
+  if(CONFIRM.state==='confirmed'){
+    cfCls='confirmed'; cfLabel='✅ CONFIRMED — 確定済み。ダウンロードできます'+(CONFIRM.at?'（'+new Date(CONFIRM.at).toLocaleTimeString('ja-JP')+'）':'');
+    cfBtn='<button class="cf-btn unlock" id="cf-unconfirm">確定を解除</button>';
+  }else if(CONFIRM.state==='stale'){
+    cfCls='stale'; cfLabel='⚠ 確定後にスコアが修正されました — 再確認して確定し直してください';
+    cfBtn=`<button class="cf-btn ${complete?'':'dis'}" id="cf-confirm" ${complete?'':'disabled'}>再確定する</button>`;
+  }else if(complete){
+    cfCls='ready'; cfLabel=`全 ${total} 件の入力が揃いました。内容を確認のうえ確定してください`;
+    cfBtn='<button class="cf-btn" id="cf-confirm">スコアを確定する</button>';
+  }else{
+    cfCls='waiting'; cfLabel=`入力中 — 未入力 ${missing} 件 / 全 ${total} 件（全部門が揃うと確定できます）`;
+    cfBtn='<button class="cf-btn dis" id="cf-confirm" disabled>スコアを確定する</button>';
+  }
+  const confirmHTML=`<div class="confirm ${cfCls}"><div class="cf-label">${cfLabel}</div>${cfBtn}</div>`;
+  const lockNote=canDownload?'':`<span class="lock-note">確定後にダウンロードできます${ADMIN_OVERRIDE?'':''}</span>`;
+  const dlAttr=canDownload?'':'disabled';
+  const dlCls=canDownload?'':'locked';
 
   wrap.innerHTML=`
     <div class="topbar">
@@ -281,11 +359,14 @@ function render(){
     </div>
     ${tabsHTML}
     ${checkHTML}
+    ${confirmHTML}
     ${tieHTML}
     ${subsHTML}
     <div class="toolbar">
-      <button class="btn" id="exp-csv"><span class="ic">CSV</span> データ出力</button>
-      <button class="btn excel" id="exp-xlsx"><span class="ic">XLSX</span> Excel出力（印刷用）</button>
+      ${lockNote}
+      <button class="btn ${dlCls}" id="exp-csv" ${dlAttr}><span class="ic">CSV</span> データ出力</button>
+      <button class="btn ${dlCls}" id="exp-media" ${dlAttr}><span class="ic">MEDIA</span> メディアCSV</button>
+      <button class="btn excel ${dlCls}" id="exp-xlsx" ${dlAttr}><span class="ic">XLSX</span> Excel出力（印刷用）</button>
     </div>
     <div class="table-scroll">
       <table>
@@ -317,6 +398,7 @@ function render(){
       </table>
     </div>
     ${awardsHTML}
+    ${manualHTML}
     <p class="legend">
       <code>Ttl = (素点1 + 素点2) ÷ 10</code>　
       <code>Efc. = GE審査員Ttlの平均 × 2</code>　
@@ -344,8 +426,15 @@ function render(){
     });
   });
   wrap.querySelectorAll('.divtab').forEach(b=>b.addEventListener('click',()=>{curDiv=b.dataset.divtab;render();}));
-  wrap.querySelector('#exp-csv').addEventListener('click',exportCSV);
-  wrap.querySelector('#exp-xlsx').addEventListener('click',exportXLSX);
+  wrap.querySelectorAll('.ma-in').forEach(inp=>inp.addEventListener('input',()=>{MANUAL_AWARDS[+inp.dataset.mi][inp.dataset.mf]=inp.value;}));
+  wrap.querySelectorAll('[data-mdel]').forEach(b=>b.addEventListener('click',()=>{MANUAL_AWARDS.splice(+b.dataset.mdel,1);render();}));
+  const madd=wrap.querySelector('#madd'); if(madd)madd.addEventListener('click',()=>{MANUAL_AWARDS.push({name:'',recipient:''});render();});
+  const msave=wrap.querySelector('#msave'); if(msave)msave.addEventListener('click',saveManual);
+  const bcsv=wrap.querySelector('#exp-csv'); if(bcsv&&!bcsv.disabled)bcsv.addEventListener('click',exportCSV);
+  const bmed=wrap.querySelector('#exp-media'); if(bmed&&!bmed.disabled)bmed.addEventListener('click',exportMediaCSV);
+  const bxls=wrap.querySelector('#exp-xlsx'); if(bxls&&!bxls.disabled)bxls.addEventListener('click',exportXLSX);
+  const cfc=wrap.querySelector('#cf-confirm'); if(cfc)cfc.addEventListener('click',doConfirm);
+  const cfu=wrap.querySelector('#cf-unconfirm'); if(cfu)cfu.addEventListener('click',doUnconfirm);
 }
 
 function detailHTML(r){
@@ -395,6 +484,16 @@ function sortedResults(){
 function csvCell(v){v=(v==null?'':String(v));return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
 function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},600);}
 function fileBase(){return 'recap_'+EVENT.name.replace(/\s+/g,'_');}
+function exportMediaCSV(){
+  const results=BANDS.filter(b=>b.division===curDiv).map(bandResult).sort((a,b)=>a.band.no-b.band.no);
+  const num=(v,r)=>{const x=(r===3?r3(v):r2(v));return x==null?'':x.toFixed(3);};
+  const lines=['team,ge,visual,music,total'];
+  results.forEach(r=>{
+    const team=/[",\r\n]/.test(r.band.name)?'"'+r.band.name.replace(/"/g,'""')+'"':r.band.name;
+    lines.push(`${team},${num(r.efc,2)} ,${num(r.vis,2)} ,${num(r.mus,2)} ,${num(r.final,3)} `);
+  });
+  downloadBlob(new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'}),`media_${(divName(curDiv)||'div').replace(/\s+/g,'_')}.csv`);
+}
 function exportCSV(){
   const {results,sorted}=sortedResults();
   const efcR=rankBy(results,r=>r.efc||0),visR=rankBy(results,r=>r.vis||0),musR=rankBy(results,r=>r.mus||0);
@@ -528,7 +627,21 @@ async function fetchScores(){
     const res=await fetch(scoresURL); if(!res.ok)throw new Error('HTTP '+res.status);
     SCORES=(await res.json())||{}; liveOK=true; lastFetch=Date.now();
   }catch(e){ liveOK=false; }
+  try{ const c=await (await fetch(confirmURL)).json(); CONFIRM=(c&&c.state)?c:{state:'none',hash:null,at:null}; }catch(e){}
+  if(CONFIRM.state==='confirmed' && scoreHash(SCORES)!==CONFIRM.hash){   // 確定後に修正 → 自動で確定解除
+    CONFIRM={state:'stale',hash:CONFIRM.hash,at:CONFIRM.at}; putConfirm();
+  }
+  const ae=document.activeElement;
+  if(ae&&ae.closest&&ae.closest('.mawards'))return;
   try{ render(); }catch(e){ console.error('render error:',e); }
+}
+async function saveManual(){
+  const btn=wrap.querySelector('#msave'); if(!btn)return; btn.textContent='保存中…';
+  try{
+    const res=await fetch(manualURL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(MANUAL_AWARDS.filter(a=>a.name||a.recipient))});
+    btn.textContent=res.ok?'✓ 保存しました':'✗ 失敗';
+  }catch(e){ btn.textContent='✗ 通信エラー'; }
+  setTimeout(()=>{const b=wrap.querySelector('#msave');if(b)b.textContent='保存';},1600);
 }
 async function boot(){
   wrap.innerHTML='<div style="padding:64px 22px;text-align:center;color:#8b96ad;font-family:var(--body)">設定を読み込み中…</div>';
@@ -542,6 +655,7 @@ async function boot(){
     PRIZE_BY_CLASS={}; (cfg.prizeRules||[]).forEach(r=>{if(r.classId)PRIZE_BY_CLASS[r.classId]={gold:r.gold,silver:r.silver,bronze:r.bronze};});
     curDiv=(DIVISIONS[0]||{}).id||null;
     Object.keys(admin).forEach(k=>delete admin[k]); BANDS.forEach(b=>admin[b.id]={hasCG:b.hasCG,pen:0});
+    try{const ma=await (await fetch(manualURL)).json();MANUAL_AWARDS=Array.isArray(ma)?ma:[];}catch(e){MANUAL_AWARDS=[];}
     await fetchScores();
     setInterval(fetchScores,5000);
   }catch(e){
