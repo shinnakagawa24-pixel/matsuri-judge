@@ -137,6 +137,7 @@ const PRIZE_RULES=[
 const base=CONFIG.DB_URL.replace(/\/+$/,'');
 const cfgURL=`${base}/events/${CONFIG.EVENT_ID}/config.json`;
 const scoresURL=`${base}/events/${CONFIG.EVENT_ID}/scores.json`;
+const confirmURL=`${base}/events/${CONFIG.EVENT_ID}/confirmed.json`;
 
 document.getElementById('dbline').textContent=base;
 document.getElementById('pathline').textContent=`events/${CONFIG.EVENT_ID}/config`;
@@ -193,12 +194,15 @@ async function verify(){
 }
 
 async function resetScores(){
-  if(!confirm('この大会の入力済みスコアをすべて削除します。設定（団体・審査員）は残ります。よろしいですか？'))return;
-  clearLog(); log('スコアを削除します…','warn');
+  if(!confirm('この大会の入力済みスコアと確定状態をすべて削除します。設定（団体・審査員・配点）は残ります。よろしいですか？'))return;
+  clearLog(); log('スコアと確定状態を削除します…','warn');
   try{
-    const res=await fetch(scoresURL,{method:'DELETE'});
-    if(!res.ok){log(`✗ 失敗（HTTP ${res.status}）`,'err');return;}
-    log('✓ スコアを全消去しました。設定はそのままです。','ok');
+    const r1=await fetch(scoresURL,{method:'DELETE'});
+    if(!r1.ok){log(`✗ スコア削除に失敗（HTTP ${r1.status}）`,'err');return;}
+    const r2=await fetch(confirmURL,{method:'DELETE'});
+    if(!r2.ok){log(`△ スコアは消しましたが、確定状態の削除に失敗（HTTP ${r2.status}）`,'warn');}
+    log('✓ スコアを全消去し、確定状態もリセットしました。設定はそのままです。','ok');
+    log('管理画面は「入力中」に戻ります。','info');
   }catch(e){log('✗ 通信エラー：'+e.message,'err');}
 }
 
