@@ -43,6 +43,20 @@
   .cf-btn.dis,.cf-btn[disabled]{opacity:.4;cursor:not-allowed;background:var(--panel-2);color:var(--muted);border-color:var(--line);}
   .btn.locked,.btn[disabled]{opacity:.4;cursor:not-allowed;}
   .lock-note{display:flex;align-items:center;font-size:11.5px;color:var(--muted);margin-right:auto;}
+  .cf-actions{display:flex;gap:9px;flex-wrap:wrap;}
+  .share-btn{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase;padding:11px 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;white-space:nowrap;}
+  .share-btn.on{background:rgba(95,208,197,.12);border-color:var(--signal);color:var(--signal);}
+  .subs-cell .dec{font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.04em;color:#06251f;background:var(--signal);border-radius:4px;padding:1px 5px;margin-right:6px;vertical-align:middle;}
+  .jedit{display:flex;align-items:center;gap:5px;}
+  .jedit .ed{width:44px;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--ink);font-family:var(--mono);font-size:12px;padding:4px 2px;outline:none;}
+  .jedit .ed:focus{border-color:var(--gold);}
+  .jedit .sl{color:var(--muted);}
+  .jedit .eq{font-family:var(--mono);font-size:12px;color:var(--signal);margin-left:4px;}
+  .cmts{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;}
+  .cmts-h{font-family:var(--display);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:11px;color:var(--muted);margin-bottom:6px;}
+  .cmt-row{display:flex;gap:10px;font-size:12.5px;padding:3px 0;}
+  .cmt-row .cn{color:var(--gold);white-space:nowrap;font-weight:500;}
+  .cmt-row .cc{color:var(--ink);}
 
   .tie-warn{display:flex;align-items:center;gap:9px;padding:10px 14px;border:1px solid var(--danger);background:rgba(232,112,90,.10);border-radius:11px;color:var(--danger);font-size:12.5px;font-weight:600;margin-bottom:16px;}
   .tie-warn .wm{font-family:var(--display);letter-spacing:.06em;}
@@ -161,6 +175,19 @@ const cfgURL=`${FB_BASE}/events/${FB.EVENT_ID}/config.json`;
 const scoresURL=`${FB_BASE}/events/${FB.EVENT_ID}/scores.json`;
 const manualURL=`${FB_BASE}/events/${FB.EVENT_ID}/manualAwards.json`;
 const confirmURL=`${FB_BASE}/events/${FB.EVENT_ID}/confirmed.json`;
+const shareURL=`${FB_BASE}/events/${FB.EVENT_ID}/share.json`;
+const statusURL=`${FB_BASE}/events/${FB.EVENT_ID}/judgeStatus.json`;
+const commentsURL=`${FB_BASE}/events/${FB.EVENT_ID}/comments.json`;
+let SHARE={state:'none'}, JUDGE_STATUS={}, COMMENTS={}, openDetail=null, editing=false;
+function putShare(){return fetch(shareURL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(SHARE)}).catch(()=>{});}
+async function doShare(){SHARE={state:'shared',at:Date.now()};await putShare();render();}
+async function doUnshare(){SHARE={state:'none',at:Date.now()};await putShare();render();}
+function writeScoreCell(jid,bid,field,val){
+  SCORES[jid]=SCORES[jid]||{}; SCORES[jid][bid]=SCORES[jid][bid]||{};
+  if(val==null||val==='')delete SCORES[jid][bid][field]; else SCORES[jid][bid][field]=Number(val);
+  if(Object.keys(SCORES[jid][bid]).length===0){ fetch(`${FB_BASE}/events/${FB.EVENT_ID}/scores/${jid}/${bid}.json`,{method:'DELETE'}).catch(()=>{}); }
+  else fetch(`${FB_BASE}/events/${FB.EVENT_ID}/scores/${jid}/${bid}.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(SCORES[jid][bid])}).catch(()=>{});
+}
 let MANUAL_AWARDS=[];
 let CONFIRM={state:'none',hash:null,at:null};
 const ADMIN_OVERRIDE=new URLSearchParams(location.search).get('admin')==='1';
@@ -300,9 +327,9 @@ function render(){
 
   const checkHTML=`<div class="check ${liveOK?'ok':'bad'}"><span class="badge">${liveOK?'● ライブ同期中':'○ 接続待ち'}</span><small>${liveOK?('最終取得 '+(lastFetch?new Date(lastFetch).toLocaleTimeString('ja-JP'):'—')+'　·　5秒ごとに自動更新'):'Firebaseからスコアを取得しています…'}</small></div>`;
 
-  const subs=JUDGES.map(j=>{const done=divBands.filter(b=>{const rv=rawVals(j.id,b.id);return rv&&rv.every(v=>v!=null);}).length;return {j,done,total:divBands.length};});
+  const subs=JUDGES.map(j=>{const done=divBands.filter(b=>{const rv=rawVals(j.id,b.id);return rv&&rv.every(v=>v!=null);}).length;const decided=!!(JUDGE_STATUS[j.id]&&JUDGE_STATUS[j.id].decided);return {j,done,total:divBands.length,decided};});
   const totalDone=subs.reduce((a,s)=>a+s.done,0);
-  const subsHTML=`<div class="subs"><div class="subs-head">提出状況 <span>${totalDone} / ${JUDGES.length*divBands.length} 入力</span></div><div class="subs-grid">${subs.map(s=>`<div class="subs-cell ${s.done===s.total&&s.total>0?'full':(s.done>0?'partial':'none')}"><span class="sj">${s.j.name}</span><span class="sc">${s.done}/${s.total}</span></div>`).join('')}</div></div>`;
+  const subsHTML=`<div class="subs"><div class="subs-head">提出状況 <span>${totalDone} / ${JUDGES.length*divBands.length} 入力　·　決定 ${subs.filter(s=>s.decided).length}/${JUDGES.length}</span></div><div class="subs-grid">${subs.map(s=>`<div class="subs-cell ${s.done===s.total&&s.total>0?'full':(s.done>0?'partial':'none')}"><span class="sj">${s.decided?'<span class="dec">決定</span>':''}${s.j.name}</span><span class="sc">${s.done}/${s.total}</span></div>`).join('')}</div></div>`;
 
   const tabsHTML=`<div class="divtabs">${DIVISIONS.map(d=>`<button class="divtab ${d.id===curDiv?'active':''}" data-divtab="${d.id}">${d.name}</button>`).join('')}</div>`;
 
@@ -332,25 +359,27 @@ function render(){
   const missing=missingCount();
   const complete=missing===0;
   const total=JUDGES.length*BANDS.length;
-  const canDownload=ADMIN_OVERRIDE||CONFIRM.state==='confirmed';
+  const decidedCount=JUDGES.filter(j=>JUDGE_STATUS[j.id]&&JUDGE_STATUS[j.id].decided).length;
+  const canDownload=true;   // ダウンロードは常時可能（ロック撤廃）
   let cfCls,cfLabel,cfBtn;
   if(CONFIRM.state==='confirmed'){
-    cfCls='confirmed'; cfLabel='✅ CONFIRMED — 確定済み。ダウンロードできます'+(CONFIRM.at?'（'+new Date(CONFIRM.at).toLocaleTimeString('ja-JP')+'）':'');
+    cfCls='confirmed'; cfLabel='🔒 SCORE FINALIZED — スコア確定済み'+(CONFIRM.at?'（'+new Date(CONFIRM.at).toLocaleTimeString('ja-JP')+'）':'');
     cfBtn='<button class="cf-btn unlock" id="cf-unconfirm">確定を解除</button>';
   }else if(CONFIRM.state==='stale'){
-    cfCls='stale'; cfLabel='⚠ 確定後にスコアが修正されました — 再確認して確定し直してください';
-    cfBtn=`<button class="cf-btn ${complete?'':'dis'}" id="cf-confirm" ${complete?'':'disabled'}>再確定する</button>`;
-  }else if(complete){
-    cfCls='ready'; cfLabel=`全 ${total} 件の入力が揃いました。内容を確認のうえ確定してください`;
-    cfBtn='<button class="cf-btn" id="cf-confirm">スコアを確定する</button>';
+    cfCls='stale'; cfLabel='⚠ 確定後にスコアが変更されました — 再確認して確定し直してください';
+    cfBtn='<button class="cf-btn" id="cf-confirm">再確定する</button>';
   }else{
-    cfCls='waiting'; cfLabel=`入力中 — 未入力 ${missing} 件 / 全 ${total} 件（全部門が揃うと確定できます）`;
-    cfBtn='<button class="cf-btn dis" id="cf-confirm" disabled>スコアを確定する</button>';
+    cfCls=complete?'ready':'waiting';
+    cfLabel=`決定 ${decidedCount}/${JUDGES.length} 名　·　入力 ${total-missing}/${total}　${complete?'— ダブルチェック後に確定できます':'（入力中）'}`;
+    cfBtn='<button class="cf-btn" id="cf-confirm">スコアを確定（Finalize）</button>';
   }
-  const confirmHTML=`<div class="confirm ${cfCls}"><div class="cf-label">${cfLabel}</div>${cfBtn}</div>`;
-  const lockNote=canDownload?'':`<span class="lock-note">確定後にダウンロードできます${ADMIN_OVERRIDE?'':''}</span>`;
-  const dlAttr=canDownload?'':'disabled';
-  const dlCls=canDownload?'':'locked';
+  const shareBtn = SHARE.state==='shared'
+    ? '<button class="share-btn on" id="share-toggle">✓ ジャッジへ共有中（解除）</button>'
+    : '<button class="share-btn" id="share-toggle">ジャッジへ共有</button>';
+  const confirmHTML=`<div class="confirm ${cfCls}"><div class="cf-label">${cfLabel}</div><div class="cf-actions">${shareBtn}${cfBtn}</div></div>`;
+  const lockNote='';
+  const dlAttr='';
+  const dlCls='';
 
   wrap.innerHTML=`
     <div class="topbar">
@@ -383,7 +412,7 @@ function render(){
             const tie=fcounts[r3(r.final)]>1;
             const pz=prizeOf(r.band,r.final);
             return `
-            <tr class="band-row ${tie?'tie':''}" data-bid="${r.band.id}">
+            <tr class="band-row ${tie?'tie':''} ${openDetail===r.band.id?'open':''}" data-bid="${r.band.id}">
               <td class="c-rank">${r.finalRank}</td>
               <td class="c-team"><span class="caret">▶</span><span class="c-no">${String(r.band.no).padStart(2,'0')}</span>　${r.band.name}${tie?'<span class="tieflag">⚠</span>':''}</td>
               <td class="c-div">${(classById(r.band.classId)||{}).label||r.band.division}</td>
@@ -395,7 +424,7 @@ function render(){
               <td class="c-final">${f3(r.final)}</td>
               <td><span class="prize ${pz.cls}">${pz.label}</span></td>
             </tr>
-            <tr class="detail-row" data-detail="${r.band.id}"><td colspan="10"><div class="detail">${detailHTML(r)}</div></td></tr>`;
+            <tr class="detail-row ${openDetail===r.band.id?'show':''}" data-detail="${r.band.id}"><td colspan="10"><div class="detail">${detailHTML(r)}</div></td></tr>`;
           }).join('')}
         </tbody>
       </table>
@@ -414,8 +443,7 @@ function render(){
   wrap.querySelectorAll('.band-row').forEach(tr=>{
     tr.addEventListener('click',e=>{
       if(e.target.closest('.pen-in'))return;
-      const d=wrap.querySelector(`.detail-row[data-detail="${tr.dataset.bid}"]`);
-      d.classList.toggle('show'); tr.classList.toggle('open');
+      const bid=tr.dataset.bid; openDetail=(openDetail===bid?null:bid); render();
     });
   });
 
@@ -434,6 +462,17 @@ function render(){
   const bcsv=wrap.querySelector('#exp-csv'); if(bcsv&&!bcsv.disabled)bcsv.addEventListener('click',exportCSV);
   const bmed=wrap.querySelector('#exp-media'); if(bmed&&!bmed.disabled)bmed.addEventListener('click',exportMediaCSV);
   const bxls=wrap.querySelector('#exp-xlsx'); if(bxls&&!bxls.disabled)bxls.addEventListener('click',exportXLSX);
+  wrap.querySelectorAll('.ed').forEach(inp=>{
+    inp.addEventListener('click',e=>e.stopPropagation());
+    inp.addEventListener('change',()=>{
+      const [jid,bid,field]=inp.dataset.ed.split('|');
+      let v=inp.value===''?'':Math.max(0,Math.min(100,parseInt(inp.value,10)||0));
+      if(inp.value!=='')inp.value=v;
+      writeScoreCell(jid,bid,field,v);
+      render();
+    });
+  });
+  const sht=wrap.querySelector('#share-toggle'); if(sht)sht.addEventListener('click',()=>SHARE.state==='shared'?doUnshare():doShare());
   const cfc=wrap.querySelector('#cf-confirm'); if(cfc)cfc.addEventListener('click',doConfirm);
   const cfu=wrap.querySelector('#cf-unconfirm'); if(cfu)cfu.addEventListener('click',doUnconfirm);
 }
@@ -446,19 +485,24 @@ function detailHTML(r){
     {key:'Visual',label:'Visual',sub:r.vis,rank:r.visRank,note:r.hasCG?`視覚 平均 × ${FACTOR.Visual} = /${mx('Visual')}`:`CG無 → Analysis のみ平均 × ${FACTOR.Visual}`},
     {key:'Music',label:'Music',sub:r.mus,rank:r.musRank,note:`平均 × ${FACTOR.Music} = /${mx('Music')}`}
   ];
-  return `<div class="fam-grid">${fams.map(f=>{
+  const grid=`<div class="fam-grid">${fams.map(f=>{
     const rows=capsByFam(f.key).map(cap=>{
       const j=judgeByCap(cap.id); if(!j)return '';
       const t=jTtl(j.id,r.band.id); const rv=rawVals(j.id,r.band.id);
       const counted=(f.key!=='Visual')||r.hasCG||!cap.isCG;
+      const v0=(rv&&rv[0]!=null)?rv[0]:''; const v1=(rv&&rv[1]!=null)?rv[1]:'';
       return `<div class="jrow ${counted?'':'muted'}"><span class="jn">${j.name}</span>
-        <span class="jraw">${rv?`${rv[0]==null?'–':rv[0]}/${rv[1]==null?'–':rv[1]}`:'–'} → ${t!=null?t.toFixed(2):'–'}</span></div>`;
+        <span class="jedit"><input class="ed" type="number" min="0" max="100" data-ed="${j.id}|${r.band.id}|${cap.fields[0]}" value="${v0}"><span class="sl">/</span><input class="ed" type="number" min="0" max="100" data-ed="${j.id}|${r.band.id}|${cap.fields[1]}" value="${v1}"><span class="eq">→ ${t!=null?t.toFixed(2):'–'}</span></span></div>`;
     }).join('');
     return `<div class="fam-card">
       <div class="fam-head"><span class="fam-name">${f.label}</span>
       <span class="fam-sub">${f2(f.sub)}<small>${f.rank}位</small></span></div>
       ${rows}<p class="fam-note">${f.note}</p></div>`;
   }).join('')}</div>`;
+  // コメント（この団体に対する各審査員のコメント）
+  const cmts=JUDGES.map(j=>{const c=COMMENTS[j.id]&&COMMENTS[j.id][r.band.id];return c?{name:j.name,c}:null;}).filter(Boolean);
+  const cmtHTML=cmts.length?`<div class="cmts"><div class="cmts-h">コメント</div>${cmts.map(x=>`<div class="cmt-row"><span class="cn">${x.name}</span><span class="cc">${String(x.c).replace(/</g,'&lt;')}</span></div>`).join('')}</div>`:'';
+  return grid+cmtHTML;
 }
 
 /* ===================== 出力（CSV / Excel印刷用） ===================== */
@@ -843,11 +887,14 @@ async function fetchScores(){
     SCORES=(await res.json())||{}; liveOK=true; lastFetch=Date.now();
   }catch(e){ liveOK=false; }
   try{ const c=await (await fetch(confirmURL)).json(); CONFIRM=(c&&c.state)?c:{state:'none',hash:null,at:null}; }catch(e){}
+  try{ const sh=await (await fetch(shareURL)).json(); SHARE=(sh&&sh.state)?sh:{state:'none'}; }catch(e){}
+  try{ JUDGE_STATUS=(await (await fetch(statusURL)).json())||{}; }catch(e){}
+  try{ COMMENTS=(await (await fetch(commentsURL)).json())||{}; }catch(e){}
   if(CONFIRM.state==='confirmed' && scoreHash(SCORES)!==CONFIRM.hash){   // 確定後に修正 → 自動で確定解除
     CONFIRM={state:'stale',hash:CONFIRM.hash,at:CONFIRM.at}; putConfirm();
   }
   const ae=document.activeElement;
-  if(ae&&ae.closest&&ae.closest('.mawards'))return;
+  if(ae&&ae.closest&&(ae.closest('.mawards')||ae.closest('.detail')))return;  // 編集中は再描画を保留
   try{ render(); }catch(e){ console.error('render error:',e); }
 }
 async function saveManual(){
