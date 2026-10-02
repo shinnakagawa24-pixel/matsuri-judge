@@ -2,483 +2,394 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>審査員入力 — Marching Matsuri Judge</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Inter:wght@400;500;600&display=swap');
-
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=JetBrains+Mono:wght@600;700&family=Inter:wght@400;500;600&display=swap');
   :root{
-    --field:#0e1320; --panel:#161d2e; --panel-2:#1d2740; --line:#2a3650;
-    --ink:#eef2fb; --muted:#8b96ad; --gold:#f2b03d; --gold-dim:#9c7327;
-    --signal:#5fd0c5; --danger:#e8705a;
-    --display:'Oswald','Arial Narrow',system-ui,sans-serif;
-    --body:'Inter',system-ui,-apple-system,sans-serif;
-    --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
-  }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;height:100%;}
-  body{
-    background:var(--field);
-    background-image:radial-gradient(120% 70% at 50% -10%, #1a2440 0%, var(--field) 55%);
-    color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;
-  }
-  .app{
-    max-width:440px;margin:0 auto;height:100vh;height:100dvh;
-    display:flex;flex-direction:column;overflow:hidden;
-  }
+    --field:#0e1320;--panel:#161d2e;--panel-2:#1d2740;--line:#2a3650;--ink:#eef2fb;--muted:#8b96ad;
+    --gold:#f2b03d;--gold-dim:#9c7327;--signal:#5fd0c5;--danger:#e8705a;--green:#3fbf6f;
+    --display:'Oswald','Arial Narrow',system-ui,sans-serif;--body:'Inter',system-ui,-apple-system,sans-serif;--mono:'JetBrains Mono',ui-monospace,Menlo,monospace;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;}
+  html,body{height:100%;}
+  body{background:var(--field);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;}
+  .app{max-width:460px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;
+    padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0);}
 
-  /* top bar */
-  .topbar{padding:12px 18px 10px;border-bottom:1px solid var(--line);flex:0 0 auto;}
-  .eyebrow{font-family:var(--display);font-weight:600;letter-spacing:.22em;text-transform:uppercase;font-size:11px;color:var(--gold);margin:0;}
-  .event-name{font-family:var(--display);font-weight:500;font-size:15px;color:var(--muted);margin:2px 0 0;letter-spacing:.02em;}
+  /* top */
+  .top{flex:0 0 auto;padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;}
+  .top .who{flex:1;min-width:0;}
+  .top .nm{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .top .cap{font-family:var(--display);font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);}
+  .pill{font-size:10px;font-weight:600;padding:4px 9px;border-radius:20px;border:1px solid;white-space:nowrap;}
+  .pill.ok{color:var(--signal);border-color:#2f5e58;}
+  .pill.wait{color:var(--gold);border-color:var(--gold-dim);}
+  .ghost{background:transparent;border:1px solid var(--line);color:var(--muted);font-size:11px;border-radius:8px;padding:6px 9px;cursor:pointer;font-family:var(--body);}
 
-  /* ---- judge select ---- */
-  .select-wrap{padding:22px 18px 40px;overflow-y:auto;}
-  .select-lead{font-size:14px;line-height:1.6;color:var(--muted);margin:0 0 22px;}
-  .select-lead b{color:var(--ink);font-weight:600;}
-  .fam-group{margin-bottom:22px;}
-  .fam-label{font-family:var(--display);text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:10px;margin:0 0 11px;}
-  .fam-label::after{content:"";flex:1;height:1px;background:var(--line);}
-  .judge-btn{width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:9px;cursor:pointer;color:var(--ink);font-family:var(--body);text-align:left;transition:border-color .15s,transform .06s;}
-  .judge-btn:active{transform:scale(.99);}
-  .judge-btn:hover{border-color:var(--gold-dim);}
-  .judge-btn .jname{font-size:16px;font-weight:600;}
-  .judge-btn .jcap{font-size:12px;color:var(--muted);margin-top:2px;display:block;}
-  .judge-btn .chev{color:var(--gold);font-size:20px;line-height:1;}
+  /* division tabs */
+  .divtabs{flex:0 0 auto;display:flex;gap:6px;padding:8px 14px 0;}
+  .divtab{flex:1;padding:8px;border-radius:9px 9px 0 0;border:1px solid var(--line);border-bottom:0;background:var(--panel);color:var(--muted);font-family:var(--display);font-weight:600;font-size:12px;cursor:pointer;}
+  .divtab.active{background:var(--gold);color:#1a1305;border-color:var(--gold);}
 
-  /* ---- scoring shell (split) ---- */
-  .scoring{flex:1;display:flex;flex-direction:column;min-height:0;}
-  .judge-strip{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--panel);flex:0 0 auto;}
-  .judge-strip .who{display:flex;flex-direction:column;}
-  .judge-strip .who .n{font-weight:600;font-size:15px;}
-  .judge-strip .who .c{font-size:11px;color:var(--gold);letter-spacing:.05em;text-transform:uppercase;font-family:var(--display);font-weight:600;}
-  .switch-btn{background:transparent;border:1px solid var(--line);color:var(--muted);font-family:var(--body);font-size:12px;border-radius:9px;padding:7px 11px;cursor:pointer;}
-  .switch-btn:active{color:var(--ink);}
-  .sync-pill{font-family:var(--body);font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;border:1px solid;white-space:nowrap;margin-left:auto;margin-right:10px;}
-  .sync-pill.ok{color:var(--signal);border-color:#2f5e58;background:rgba(95,208,197,.08);}
-  .sync-pill.wait{color:var(--gold);border-color:var(--gold-dim);background:rgba(242,176,61,.10);}
-  .jdivtabs{display:flex;gap:7px;padding:10px 14px 2px;flex:0 0 auto;}
-  .jdivtab{flex:1;padding:9px 6px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.03em;cursor:pointer;}
-  .jdivtab.active{background:var(--gold);color:#1a1305;border-color:var(--gold);}
+  /* main tabs */
+  .tabs{flex:0 0 auto;display:flex;border-bottom:1px solid var(--line);}
+  .tab{flex:1;padding:12px 4px;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--display);font-weight:600;font-size:12.5px;letter-spacing:.06em;cursor:pointer;}
+  .tab.active{color:var(--ink);border-bottom-color:var(--gold);}
 
-  /* input zone (scrolls within its own area) */
-  .input-zone{flex:1;min-height:0;overflow-y:auto;}
-  .rail{display:flex;gap:5px;padding:12px 18px 4px;}
-  .pip{flex:1;height:4px;border-radius:3px;background:var(--line);transition:background .2s;}
-  .pip.done{background:var(--signal);}
-  .pip.current{background:var(--gold);}
-  .rail-label{padding:6px 18px 0;font-size:11px;color:var(--muted);letter-spacing:.04em;}
-  .rail-label b{color:var(--signal);font-weight:600;}
+  .body{flex:1;min-height:0;overflow-y:auto;}
 
-  .card{padding:6px 18px 16px;}
-  .band-head{padding:12px 0 14px;border-bottom:1px solid var(--line);margin-bottom:16px;}
-  .band-no{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--gold);letter-spacing:.06em;}
-  .band-meta{font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-family:var(--display);font-weight:500;margin:4px 0 6px;}
-  .band-name{font-family:var(--display);font-weight:600;font-size:23px;line-height:1.15;letter-spacing:.01em;}
+  /* select screen */
+  .sel{padding:20px 16px 40px;}
+  .sel h1{font-family:var(--display);font-weight:600;font-size:20px;margin-bottom:4px;}
+  .sel p{color:var(--muted);font-size:13px;margin-bottom:18px;}
+  .famlabel{font-family:var(--display);text-transform:uppercase;letter-spacing:.14em;font-size:11px;color:var(--ink);display:flex;align-items:center;gap:9px;margin:16px 0 9px;}
+  .famlabel::after{content:"";flex:1;height:1px;background:var(--line);}
+  .jb{width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 16px;margin-bottom:8px;color:var(--ink);text-align:left;cursor:pointer;font-family:var(--body);}
+  .jb .n{font-size:16px;font-weight:600;}
+  .jb .c{font-size:11px;color:var(--muted);margin-top:2px;}
+  .jb .chev{color:var(--gold);font-size:20px;}
 
-  .field{margin-bottom:14px;}
-  .field-label{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
-  .field-label .fl-main{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.04em;text-transform:uppercase;}
-  .field-label .fl-sub{font-size:11px;color:var(--muted);}
-  .stepper{display:flex;align-items:stretch;gap:9px;}
-  .step-btn{width:50px;flex:0 0 50px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:24px;border-radius:12px;cursor:pointer;font-family:var(--body);display:flex;align-items:center;justify-content:center;user-select:none;}
-  .step-btn:active{background:var(--panel-2);border-color:var(--gold-dim);}
-  .score-in{flex:1;min-width:0;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--ink);font-family:var(--mono);font-weight:700;font-size:30px;padding:8px 4px;outline:none;transition:border-color .15s;}
-  .score-in::-webkit-outer-spin-button,.score-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
-  .score-in[type=number]{-moz-appearance:textfield;}
-  .score-in:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(242,176,61,.14);}
-  .score-in.filled{border-color:var(--signal);}
+  /* criteria tab */
+  .crit{padding:18px 18px 40px;}
+  .crit .band{font-family:var(--display);font-weight:600;font-size:18px;margin-bottom:12px;}
+  .crit .item{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--panel);}
+  .crit .item h3{font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.05em;}
+  .crit .item p{color:var(--muted);font-size:12.5px;margin-top:5px;line-height:1.5;}
+  .crit .note{color:var(--muted);font-size:12px;line-height:1.7;margin-top:6px;}
+  .crit .note code{font-family:var(--mono);color:var(--ink);background:var(--panel);padding:1px 6px;border-radius:5px;}
 
-  .ttl-box{margin-top:4px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,var(--panel-2),var(--panel));padding:13px 16px;display:flex;align-items:center;justify-content:space-between;}
-  .ttl-box .tl{font-family:var(--display);text-transform:uppercase;letter-spacing:.16em;font-size:12px;color:var(--muted);font-weight:600;}
-  .ttl-box .tl small{display:block;text-transform:none;letter-spacing:.02em;font-size:10px;margin-top:3px;color:var(--gold-dim);}
-  .ttl-right{display:flex;align-items:center;gap:14px;}
-  .rank-now{font-family:var(--display);font-weight:600;font-size:13px;color:var(--signal);text-transform:uppercase;letter-spacing:.08em;}
-  .rank-now.empty{color:var(--line);}
-  .ttl-val{font-family:var(--mono);font-weight:700;font-size:36px;color:var(--gold);line-height:1;}
-  .ttl-val.empty{color:var(--line);}
+  /* input tab */
+  .inp{display:flex;flex-direction:column;height:100%;}
+  .bandbar{flex:0 0 auto;padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .bandbar .bn{min-width:0;}
+  .bandbar .no{font-family:var(--mono);font-size:11px;color:var(--gold);}
+  .bandbar .tm{font-family:var(--display);font-weight:600;font-size:17px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .bandbar .meta{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-family:var(--display);}
+  .navbtn{width:40px;height:40px;flex:0 0 40px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;font-size:18px;cursor:pointer;}
+  .navbtn[disabled]{opacity:.3;}
 
-  .nav{display:flex;gap:11px;padding:4px 18px 18px;}
-  .nav-btn{flex:1;padding:14px;border-radius:13px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;}
-  .nav-btn:active{transform:scale(.99);}
-  .nav-btn[disabled]{opacity:.32;cursor:default;}
-  .nav-btn.primary{background:var(--gold);color:#1a1305;border-color:var(--gold);}
+  .fields{flex:0 0 auto;display:flex;gap:10px;padding:14px 16px 6px;}
+  .fbox{flex:1;border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:10px 8px;text-align:center;cursor:pointer;}
+  .fbox.active{border-color:var(--gold);box-shadow:0 0 0 3px rgba(242,176,61,.14);}
+  .fbox .fl{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);}
+  .fbox .fv{font-family:var(--mono);font-weight:700;font-size:40px;line-height:1.1;margin-top:2px;}
+  .fbox.active .fv{color:var(--gold);}
+  .fbox .fv.empty{color:var(--line);}
+  .ttlbar{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;padding:2px 16px 8px;}
+  .ttlbar .lab{font-family:var(--display);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
+  .ttlbar .val{font-family:var(--mono);font-weight:700;font-size:20px;color:var(--signal);}
+  .ttlbar .rk{font-family:var(--display);font-size:11px;color:var(--gold);letter-spacing:.06em;}
 
-  /* ---- bottom panel: always-visible standings / sync ---- */
-  .panel{flex:0 0 auto;height:34vh;max-height:320px;min-height:170px;border-top:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;}
-  .panel-tabs{display:flex;flex:0 0 auto;border-bottom:1px solid var(--line);}
-  .ptab{flex:1;padding:11px;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;}
-  .ptab.active{color:var(--ink);border-bottom-color:var(--gold);}
-  .panel-body{flex:1;min-height:0;overflow-y:auto;}
+  .cglock{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;color:var(--muted);}
+  .cglock .big{font-family:var(--display);font-weight:600;font-size:20px;color:var(--danger);margin-bottom:8px;}
 
-  /* standings list */
-  .st-list{padding:0 0 6px;}
-  .st-warn{display:flex;align-items:center;gap:8px;margin:8px 12px 4px;padding:8px 11px;border:1px solid var(--danger);background:rgba(232,112,90,.12);border-radius:9px;color:var(--danger);font-size:11.5px;font-weight:600;font-family:var(--body);}
-  .st-warn .wm{font-family:var(--display);letter-spacing:.06em;white-space:nowrap;}
-  .st-headrow,.st-row{display:grid;grid-template-columns:30px 1fr 38px 38px 50px;align-items:center;gap:8px;padding:8px 14px;}
-  .st-headrow{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);z-index:2;font-family:var(--display);font-weight:600;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
-  .st-headrow span{text-align:center;}
-  .st-headrow .h-name{text-align:left;}
-  .st-row{width:100%;background:transparent;border:0;border-left:3px solid transparent;color:var(--ink);font-family:var(--body);text-align:left;cursor:pointer;}
-  .st-row:active{background:var(--panel-2);}
+  .cmt{flex:0 0 auto;padding:0 16px 8px;}
+  .cmt input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--ink);font-family:var(--body);font-size:14px;padding:10px 12px;outline:none;}
+  .cmt input:focus{border-color:var(--gold);}
+
+  .keypad{flex:0 0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:6px 16px 16px;}
+  .key{padding:16px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:12px;font-family:var(--mono);font-weight:700;font-size:24px;cursor:pointer;user-select:none;}
+  .key:active{background:var(--panel-2);border-color:var(--gold-dim);}
+  .key.util{font-family:var(--display);font-size:15px;color:var(--muted);letter-spacing:.04em;}
+
+  /* ranking tab */
+  .rank{padding:10px 0 30px;}
+  .rtoggle{display:flex;gap:6px;padding:10px 16px;}
+  .rtoggle button{flex:1;padding:9px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-family:var(--display);font-weight:600;font-size:12px;cursor:pointer;}
+  .rtoggle button.active{background:var(--gold);color:#1a1305;border-color:var(--gold);}
+  .rtoggle button[disabled]{opacity:.4;}
+  .st-warn{display:flex;align-items:center;gap:8px;margin:6px 14px;padding:8px 11px;border:1px solid var(--danger);background:rgba(232,112,90,.12);border-radius:9px;color:var(--danger);font-size:11.5px;font-weight:600;}
+  .st-head,.st-row{display:grid;grid-template-columns:30px 1fr 42px 42px 52px;align-items:center;gap:8px;padding:9px 14px;}
+  .st-head{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);font-family:var(--display);font-weight:600;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+  .st-head span{text-align:center;} .st-head .hn{text-align:left;}
+  .st-row{border-left:3px solid transparent;}
   .st-row.cur{background:rgba(242,176,61,.08);border-left-color:var(--gold);}
-  .st-row.empty{opacity:.5;}
   .st-row.tie{background:rgba(232,112,90,.10);border-left-color:var(--danger);}
-  .st-rank{font-family:var(--mono);font-weight:700;font-size:17px;color:var(--signal);text-align:center;}
-  .st-row.empty .st-rank{color:var(--line);}
-  .st-row.cur .st-rank{color:var(--gold);}
-  .st-row.tie .st-rank{color:var(--danger);}
-  .st-name{min-width:0;}
-  .st-name .st-no{font-family:var(--mono);font-size:11px;color:var(--muted);margin-right:6px;}
-  .st-name .st-bn{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%;vertical-align:bottom;}
-  .st-name .tieflag{color:var(--danger);font-size:11px;margin-left:5px;font-weight:700;}
-  .st-sub{font-family:var(--mono);font-weight:500;font-size:13px;color:var(--muted);text-align:center;}
-  .st-ttl{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--ink);text-align:center;}
+  .st-row.empty{opacity:.5;}
+  .st-rk{font-family:var(--mono);font-weight:700;font-size:16px;color:var(--signal);text-align:center;}
+  .st-row.cur .st-rk{color:var(--gold);} .st-row.tie .st-rk{color:var(--danger);}
+  .st-nm{min-width:0;} .st-nm .no{font-family:var(--mono);font-size:10px;color:var(--muted);margin-right:6px;}
+  .st-nm .bn{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%;vertical-align:bottom;}
+  .st-sub{font-family:var(--mono);font-size:13px;color:var(--muted);text-align:center;}
+  .st-ttl{font-family:var(--mono);font-weight:700;font-size:15px;text-align:center;}
   .st-row.empty .st-sub,.st-row.empty .st-ttl{color:var(--line);}
-  .st-row.tie .st-ttl{color:var(--danger);}
+  .rinfo{color:var(--muted);font-size:12px;padding:10px 16px;line-height:1.6;}
 
-  /* sync pane */
-  .sync-pane{padding:12px 16px;}
-  .sync-pane .path{font-family:var(--mono);font-size:11px;color:var(--signal);margin:0 0 9px;}
-  .sync-pane pre{margin:0;font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--ink);white-space:pre-wrap;word-break:break-word;}
-  .copy-btn{margin-top:11px;width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);font-family:var(--body);font-size:13px;cursor:pointer;}
-  .copy-btn:active{border-color:var(--gold);}
+  /* decide bar */
+  .decide{flex:0 0 auto;padding:10px 16px;border-top:1px solid var(--line);background:var(--panel);}
+  .decidebtn{width:100%;padding:14px;border-radius:12px;border:1px solid var(--gold);background:var(--gold);color:#1a1305;font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;}
+  .decidebtn.done{background:rgba(63,191,111,.14);color:var(--green);border-color:var(--green);}
+  .decidebtn:active{transform:scale(.99);}
+  .decidenote{text-align:center;font-size:11px;color:var(--muted);margin-top:6px;}
 
-  .toast{position:fixed;left:50%;bottom:calc(34vh + 18px);transform:translateX(-50%) translateY(20px);background:var(--signal);color:#06251f;padding:10px 20px;border-radius:30px;font-weight:600;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.4);}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 </style>
 </head>
 <body>
 <div class="app" id="app"></div>
-<div class="toast" id="toast"></div>
 
 <script>
-const FIELD_LABEL = {
-  Rep:"Repertoire 演技構成", Pfm:"Performance 完成度",
-  Cont:"Content 内容", Achv:"Achievement 達成度", Sbst:"Subset サブセット"
-};
-let CAPTIONS = [
-  {id:"ge1",family:"GE",name:"General Effect 1",fields:["Rep","Pfm"]},
-  {id:"ge2",family:"GE",name:"General Effect 2",fields:["Rep","Pfm"]},
-  {id:"ge3",family:"GE",name:"General Effect 3",fields:["Rep","Pfm"]},
-  {id:"ge4",family:"GE",name:"General Effect 4",fields:["Rep","Pfm"]},
-  {id:"va1",family:"Visual",name:"Visual Analysis 1",fields:["Cont","Achv"]},
-  {id:"va2",family:"Visual",name:"Visual Analysis 2",fields:["Cont","Achv"]},
-  {id:"cg1",family:"Visual",name:"Color Guard 1",fields:["Sbst","Achv"]},
-  {id:"cg2",family:"Visual",name:"Color Guard 2",fields:["Sbst","Achv"]},
-  {id:"ma1",family:"Music",name:"Music Analysis 1",fields:["Cont","Achv"]},
-  {id:"ma2",family:"Music",name:"Music Analysis 2",fields:["Cont","Achv"]},
-  {id:"mb1",family:"Music",name:"Music Perc. Battery 1",fields:["Cont","Achv"]},
-  {id:"mb2",family:"Music",name:"Music Perc. Battery 2",fields:["Cont","Achv"]},
-  {id:"mp1",family:"Music",name:"Music Perc. Pit 1",fields:["Cont","Achv"]},
-  {id:"mp2",family:"Music",name:"Music Perc. Pit 2",fields:["Cont","Achv"]}
-];
-let JUDGES = [
-  {id:"jge1",name:"大川勝己",captionId:"ge1"},{id:"jge2",name:"田中義之",captionId:"ge2"},
-  {id:"jge3",name:"阿佐美圭祐",captionId:"ge3"},{id:"jge4",name:"野上孟",captionId:"ge4"},
-  {id:"jva1",name:"井上隆介",captionId:"va1"},{id:"jva2",name:"大澤沙希",captionId:"va2"},
-  {id:"jcg1",name:"藤田奈緒美",captionId:"cg1"},{id:"jcg2",name:"笹原名津美",captionId:"cg2"},
-  {id:"jma1",name:"清水康弘",captionId:"ma1"},{id:"jma2",name:"片岡優斗",captionId:"ma2"},
-  {id:"jmb1",name:"中村裕治",captionId:"mb1"},{id:"jmb2",name:"仲本克也",captionId:"mb2"},
-  {id:"jmp1",name:"櫻井公美",captionId:"mp1"},{id:"jmp2",name:"長田英之",captionId:"mp2"}
-];
-let BANDS = [
-  {id:"b1",no:1,division:"MB/小",category:"一般",name:"Spirit of Stars",hasCG:true},
-  {id:"b2",no:2,division:"MB/小",category:"一般",name:"DER GLANZ",hasCG:true},
-  {id:"b3",no:3,division:"MB/中",category:"一般",name:"MARCHING BAND COURAGE",hasCG:true},
-  {id:"b4",no:4,division:"MB/中",category:"一般",name:"THE FOCUS",hasCG:true},
-  {id:"b5",no:5,division:"MB/中",category:"一般",name:"GENESIS",hasCG:true},
-  {id:"b6",no:6,division:"MB/大",category:"一般",name:"Yokohama INSPIRES Drum & Bugle Corps",hasCG:true},
-  {id:"b7",no:7,division:"MB/大",category:"一般",name:"YOKOHAMA ROBINS",hasCG:true}
-];
-const FAMILY_LABEL = {GE:"General Effect",Visual:"Visual",Music:"Music"};
-
-const state = { judgeId:null, bandIndex:0, scores:{}, panel:'standings' };
-let EV={name:'Marching Matsuri',date:''};
-let DIVISIONS=[], CLASSES=[], curDiv=null;
-function curBands(){return curDiv?BANDS.filter(b=>b.division===curDiv):BANDS;}
-const clsLabel=b=>(CLASSES.find(c=>c.id===b.classId)||{}).label||'';
-
-/* ============================================================
-   Firebase 連携（案A：即時PUT＋自動リトライ＋端末退避）
-============================================================ */
+/* ===================== Firebase ===================== */
 const CONFIG={DB_URL:"https://marching-matsuri-judge-default-rtdb.asia-southeast1.firebasedatabase.app",EVENT_ID:"shonan-2026"};
 const BASE=CONFIG.DB_URL.replace(/\/+$/,'');
 const cfgURL=`${BASE}/events/${CONFIG.EVENT_ID}/config.json`;
-const scoreURL=(jid,bid)=>`${BASE}/events/${CONFIG.EVENT_ID}/scores/${jid}/${bid}.json`;
-const LS={cfg:'mmj_cfg_'+CONFIG.EVENT_ID,queue:'mmj_queue_'+CONFIG.EVENT_ID,scores:'mmj_scores_'+CONFIG.EVENT_ID};
-function lsGet(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch(e){return def;}}
+const scoreURL=(j,b)=>`${BASE}/events/${CONFIG.EVENT_ID}/scores/${j}/${b}.json`;
+const commentURL=(j,b)=>`${BASE}/events/${CONFIG.EVENT_ID}/comments/${j}/${b}.json`;
+const statusURL=(j)=>`${BASE}/events/${CONFIG.EVENT_ID}/judgeStatus/${j}.json`;
+const shareURL=`${BASE}/events/${CONFIG.EVENT_ID}/share.json`;
+const allScoresURL=`${BASE}/events/${CONFIG.EVENT_ID}/scores.json`;
+const LS={cfg:'mmj_cfg_'+CONFIG.EVENT_ID,queue:'mmj_q_'+CONFIG.EVENT_ID,scores:'mmj_s_'+CONFIG.EVENT_ID,comments:'mmj_c_'+CONFIG.EVENT_ID};
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 
-let queue=lsGet(LS.queue,[]);       // 送信待ち [{jid,bid}]
-let syncing=false;
-function persistScores(){lsSet(LS.scores,state.scores);}
-function loadPersistedScores(){state.scores=lsGet(LS.scores,{});}
-function queueScore(jid,bid){
-  queue=queue.filter(q=>!(q.jid===jid&&q.bid===bid));
-  queue.push({jid,bid}); lsSet(LS.queue,queue);
-  updateSyncUI(); flush();
-}
+/* ===================== config/state ===================== */
+let EV={name:'Marching Matsuri',date:''};
+let CAPTIONS=[],JUDGES=[],BANDS=[],DIVISIONS=[],CLASSES=[],FAMILIES={},PRIZE=[];
+const state={judgeId:null,curDiv:null,tab:'input',bandIndex:0,active:0,buf:'',
+  scores:lsGet(LS.scores,{}),comments:lsGet(LS.comments,{}),decided:false,
+  shareState:'none',allScores:{},rankMode:'self'};
+const FIELD_DESC={Rep:'Repertoire Effect / 構成の効果',Pfm:'Performers Effect / 奏者の表現',
+  Cont:'Content / 内容',Achv:'Achievement / 達成度',Sbst:'Substance / 内容の充実'};
+
+const judgeOf=id=>JUDGES.find(j=>j.id===id);
+const capOf=j=>CAPTIONS.find(c=>c.id===(j&&j.captionId));
+const capById=id=>CAPTIONS.find(c=>c.id===id);
+const clsLabel=b=>(CLASSES.find(c=>c.id===b.classId)||{}).label||'';
+const divName=id=>(DIVISIONS.find(d=>d.id===id)||{}).name||id;
+function curBands(){return state.curDiv?BANDS.filter(b=>b.division===state.curDiv):BANDS;}
+function isCGJudge(){const c=capOf(judgeOf(state.judgeId));return !!(c&&c.isCG);}
+function bandLocked(band){return isCGJudge() && band && band.hasCG===false;}
+
+/* ===================== sync queue (score + comment) ===================== */
+let queue=lsGet(LS.queue,[]),syncing=false;
+function persist(){lsSet(LS.scores,state.scores);lsSet(LS.comments,state.comments);}
+function enqueue(kind,jid,bid){queue=queue.filter(q=>!(q.kind===kind&&q.jid===jid&&q.bid===bid));queue.push({kind,jid,bid});lsSet(LS.queue,queue);updateSync();flush();}
 async function flush(){
-  if(syncing||!queue.length)return; syncing=true;
+  if(syncing||!queue.length)return;syncing=true;
   while(queue.length){
     const it=queue[0];
-    const data=(state.scores[it.jid]&&state.scores[it.jid][it.bid])||null;
     try{
-      const res=await fetch(scoreURL(it.jid,it.bid),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-      if(!res.ok)throw new Error('HTTP '+res.status);
-      queue.shift(); lsSet(LS.queue,queue); updateSyncUI();
-    }catch(e){ updateSyncUI(); break; }   // 失敗→端末に残し後でリトライ
+      let url,val;
+      if(it.kind==='score'){url=scoreURL(it.jid,it.bid);val=(state.scores[it.jid]&&state.scores[it.jid][it.bid])||null;}
+      else{url=commentURL(it.jid,it.bid);val=(state.comments[it.jid]&&state.comments[it.jid][it.bid])||null;}
+      const res=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(val)});
+      if(!res.ok)throw 0;
+      queue.shift();lsSet(LS.queue,queue);updateSync();
+    }catch(e){updateSync();break;}
   }
   syncing=false;
 }
 setInterval(()=>{if(queue.length)flush();},4000);
 window.addEventListener('online',flush);
-function updateSyncUI(){
-  const el=document.getElementById('syncpill'); if(!el)return;
-  if(queue.length){el.className='sync-pill wait';el.textContent='送信待ち '+queue.length+'件';}
-  else{el.className='sync-pill ok';el.textContent='同期済み';}
+function updateSync(){const el=document.getElementById('syncpill');if(!el)return;
+  if(queue.length){el.className='pill wait';el.textContent='送信待ち '+queue.length;}else{el.className='pill ok';el.textContent='同期済み';}}
+
+/* ===================== scoring helpers ===================== */
+function entry(jid,bid){return (state.scores[jid]&&state.scores[jid][bid])||{};}
+function capFieldsOf(jid){const c=capOf(judgeOf(jid));return c?c.fields:[];}
+function ttlOf(jid,bid){const f=capFieldsOf(jid),e=entry(jid,bid);if(!f.length)return null;const v=f.map(k=>e[k]);if(v.some(x=>x==null||x===''))return null;return (Number(v[0])+Number(v[1]))/10;}
+function isComplete(jid,bid){const f=capFieldsOf(jid),e=entry(jid,bid);return f.length&&f.every(k=>e[k]!=null&&e[k]!=='');}
+function computeStandings(jid){
+  const rows=curBands().map(b=>({band:b,ttl:bandLocked(b)?null:ttlOf(jid,b.id)}));
+  const ent=rows.filter(r=>r.ttl!=null);ent.forEach(r=>r.rank=1+ent.filter(o=>o.ttl>r.ttl).length);
+  return rows.sort((a,b)=>{if(a.ttl==null&&b.ttl==null)return a.band.no-b.band.no;if(a.ttl==null)return 1;if(b.ttl==null)return -1;return a.rank-b.rank||a.band.no-b.band.no;});
 }
-async function loadConfig(){
-  try{
-    const res=await fetch(cfgURL); if(!res.ok)throw new Error('HTTP '+res.status);
-    const cfg=await res.json(); if(!cfg||!cfg.captions)throw new Error('empty');
-    lsSet(LS.cfg,cfg); return cfg;
-  }catch(e){ const c=lsGet(LS.cfg,null); if(c)return c; throw e; }
-}
+/* full recap engine (shared) */
+const FACTOR=f=>(FAMILIES[f]&&FAMILIES[f].factor)||(f==='GE'?2:1.5);
+function allTtl(jid,bid){const c=capOf(judgeOf(jid));if(!c)return null;const s=state.allScores[jid]&&state.allScores[jid][bid];if(!s)return null;const v=c.fields.map(k=>s[k]);if(v.some(x=>x==null||x===''))return null;return (Number(v[0])+Number(v[1]))/10;}
+function famSub(bid,fam,hasCG){let caps;if(fam==='Visual'){const vis=CAPTIONS.filter(c=>c.family==='Visual');caps=(hasCG?vis:vis.filter(c=>!c.isCG));}else caps=CAPTIONS.filter(c=>c.family===fam);
+  const t=caps.map(c=>{const j=JUDGES.find(j=>j.captionId===c.id);return j?allTtl(j.id,bid):null;}).filter(x=>x!=null);
+  if(!t.length)return null;return (t.reduce((a,b)=>a+b,0)/t.length)*FACTOR(fam);}
+function finalOf(band){const e=famSub(band.id,'GE',band.hasCG!==false),v=famSub(band.id,'Visual',band.hasCG!==false),m=famSub(band.id,'Music',band.hasCG!==false);return (e||0)+(v||0)+(m||0);}
+function prizeOf(band,final){const r=PRIZE.find(p=>p.classId===band.classId);if(!r||final==null)return'';if(final>=r.gold)return'金賞';if(final>=r.silver)return'銀賞';if(r.bronze!=null&&final>=r.bronze)return'銅賞';return'';}
+
+/* ===================== boot ===================== */
+const app=document.getElementById('app');
+async function loadConfig(){try{const res=await fetch(cfgURL);if(!res.ok)throw 0;const c=await res.json();if(!c||!c.captions)throw 0;lsSet(LS.cfg,c);return c;}catch(e){const c=lsGet(LS.cfg,null);if(c)return c;throw new Error('設定を読み込めません');}}
 async function boot(){
-  loadPersistedScores();
-  app.innerHTML='<div style="padding:64px 22px;text-align:center;color:#8b96ad;font-family:var(--body)">設定を読み込み中…</div>';
+  app.innerHTML='<div style="padding:70px 22px;text-align:center;color:#8b96ad">設定を読み込み中…</div>';
   try{
     const cfg=await loadConfig();
-    CAPTIONS=cfg.captions; JUDGES=cfg.judges; BANDS=cfg.bands; EV=cfg.event||EV;
-    DIVISIONS=cfg.divisions||[]; CLASSES=cfg.classes||[]; curDiv=(DIVISIONS[0]||{}).id||null;
-    render(); updateSyncUI(); flush();
-  }catch(e){
-    app.innerHTML='<div style="padding:52px 24px;text-align:center;color:#e8705a;font-family:var(--body);line-height:1.8">設定を読み込めませんでした。<br>ネット接続を確認して再読み込みしてください。<br><small style="color:#8b96ad">'+e.message+'</small></div>';
-  }
+    CAPTIONS=cfg.captions;JUDGES=cfg.judges;BANDS=cfg.bands;EV=cfg.event||EV;
+    DIVISIONS=cfg.divisions||[];CLASSES=cfg.classes||[];FAMILIES=cfg.families||{};PRIZE=cfg.prizeRules||[];
+    state.curDiv=(DIVISIONS[0]||{}).id||null;
+    render();flush();pollShare();setInterval(pollShare,8000);
+  }catch(e){app.innerHTML='<div style="padding:60px 24px;text-align:center;color:#e8705a;line-height:1.8">設定を読み込めませんでした。<br>ネット接続を確認して再読み込みしてください。</div>';}
 }
-const capOf   = j => CAPTIONS.find(c=>c.id===j.captionId);
-const judgeOf = id => JUDGES.find(j=>j.id===id);
-
-function clampScore(v){ if(v===""||v==null)return ""; let n=parseInt(v,10);
-  if(isNaN(n))return ""; if(n<0)n=0; if(n>100)n=100; return n; }
-function bandEntry(jid,bid){ return (state.scores[jid]&&state.scores[jid][bid])||{}; }
-function isBandComplete(jid,bid){ const cap=capOf(judgeOf(jid)); const e=bandEntry(jid,bid);
-  return cap.fields.every(f=>e[f]!==""&&e[f]!=null); }
-function liveTtl(jid,bid){ const cap=capOf(judgeOf(jid)); const e=bandEntry(jid,bid);
-  const vals=cap.fields.map(f=>e[f]); if(vals.some(v=>v===""||v==null))return null;
-  return vals.reduce((a,b)=>a+b,0)/10; }
-
-function computeStandings(jid){
-  const rows = curBands().map(b=>({band:b, ttl:liveTtl(jid,b.id)}));
-  const entered = rows.filter(r=>r.ttl!=null);
-  entered.forEach(r=>{ r.rank = 1 + entered.filter(o=>o.ttl>r.ttl).length; });
-  const ent = entered.slice().sort((a,b)=> a.rank-b.rank || a.band.no-b.band.no);
-  const emp = rows.filter(r=>r.ttl==null).sort((a,b)=>a.band.no-b.band.no);
-  return ent.concat(emp);
+async function pollShare(){
+  try{const s=await (await fetch(shareURL)).json();const ns=(s&&s.state)||'none';
+    if(ns!==state.shareState){state.shareState=ns;if(state.tab==='ranking')render();}
+    else state.shareState=ns;}catch(e){}
+  if(state.shareState==='shared'){try{state.allScores=(await (await fetch(allScoresURL)).json())||{};if(state.tab==='ranking'&&state.rankMode==='final')render();}catch(e){}}
 }
+async function loadStatus(){try{const s=await (await fetch(statusURL(state.judgeId))).json();state.decided=!!(s&&s.decided);}catch(e){state.decided=false;}}
+function putStatus(){fetch(statusURL(state.judgeId),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({decided:state.decided,at:Date.now()})}).catch(()=>{});}
 
-const app = document.getElementById('app');
-function render(){ state.judgeId ? renderScoring() : renderSelect(); }
+/* ===================== render ===================== */
+function render(){state.judgeId?renderMain():renderSelect();}
 
 function renderSelect(){
-  const groups={GE:[],Visual:[],Music:[]};
-  JUDGES.forEach(j=>groups[capOf(j).family].push(j));
-  app.innerHTML = `
-    <div class="topbar"><p class="eyebrow">審査員入力</p><p class="event-name">${EV.name||'Marching Matsuri'}</p></div>
-    <div class="select-wrap">
-      <p class="select-lead">担当の<b>お名前を選んでください</b>。ログインは不要です。選ぶと、担当キャプションに合わせた入力画面に進みます。</p>
-      ${Object.keys(groups).map(fam=>`
-        <div class="fam-group"><p class="fam-label">${FAMILY_LABEL[fam]}</p>
-        ${groups[fam].map(j=>{const c=capOf(j);
-          return `<button class="judge-btn" data-jid="${j.id}">
-            <span><span class="jname">${j.name}</span><span class="jcap">${c.name}　/　${c.fields.join(' ＋ ')}</span></span>
-            <span class="chev">›</span></button>`;}).join('')}
-        </div>`).join('')}
-    </div>`;
-  app.querySelectorAll('.judge-btn').forEach(b=>b.addEventListener('click',()=>{
-    state.judgeId=b.dataset.jid; state.bandIndex=0; render();
-  }));
+  const FAM={GE:'General Effect',Visual:'Visual',Music:'Music'};const groups={GE:[],Visual:[],Music:[]};
+  JUDGES.forEach(j=>{const c=capOf(j);if(c&&groups[c.family])groups[c.family].push(j);});
+  app.innerHTML=`<div class="body"><div class="sel">
+    <h1>${EV.name||'Marching Matsuri'}</h1><p>お名前を選んでください</p>
+    ${Object.keys(groups).map(f=>groups[f].length?`<div class="famlabel">${FAM[f]}</div>`+groups[f].map(j=>{const c=capOf(j);
+      return `<button class="jb" data-j="${j.id}"><span><span class="n">${j.name}</span><span class="c">${c?c.name:''}</span></span><span class="chev">›</span></button>`;}).join(''):'').join('')}
+  </div></div>`;
+  app.querySelectorAll('.jb').forEach(b=>b.addEventListener('click',async()=>{state.judgeId=b.dataset.j;state.bandIndex=0;state.tab='input';await loadStatus();render();}));
 }
 
-function renderScoring(){
-  const judge=judgeOf(state.judgeId), cap=capOf(judge);
-  const bands=curBands();
-  if(state.bandIndex>=bands.length)state.bandIndex=0;
-  const band=bands[state.bandIndex];
-  const tabs = DIVISIONS.length>1 ? `<div class="jdivtabs">${DIVISIONS.map(d=>`<button class="jdivtab ${d.id===curDiv?'active':''}" data-jdiv="${d.id}">${d.name}</button>`).join('')}</div>` : '';
-  const head = `
-    <div class="topbar"><p class="eyebrow">審査員入力</p><p class="event-name">${EV.name||'Marching Matsuri'}</p></div>
-    <div class="judge-strip">
-      <div class="who"><span class="n">${judge.name}</span><span class="c">${cap.name}</span></div>
-      <span class="sync-pill ok" id="syncpill">同期済み</span>
-      <button class="switch-btn" id="switch">審査員を変更</button>
-    </div>${tabs}`;
-  if(!band){
-    app.innerHTML=head+`<div style="padding:56px 22px;text-align:center;color:var(--muted);font-family:var(--body)">この部門には団体がありません。</div>`;
-    app.querySelectorAll('.jdivtab').forEach(b=>b.addEventListener('click',()=>{curDiv=b.dataset.jdiv;state.bandIndex=0;render();}));
-    app.querySelector('#switch').addEventListener('click',()=>{state.judgeId=null;render();});
-    return;
-  }
-  app.innerHTML = head + `
-    <div class="scoring">
-      <div class="input-zone">
-        <div class="rail">${bands.map((b,i)=>{
-          const cls=i===state.bandIndex?'current':(isBandComplete(judge.id,b.id)?'done':'');
-          return `<span class="pip ${cls}"></span>`;}).join('')}</div>
-        <p class="rail-label">入力済み <b>${bands.filter(b=>isBandComplete(judge.id,b.id)).length}</b> / ${bands.length} 団体</p>
-        <div class="card">
-          <div class="band-head">
-            <div class="band-no">NO.${String(band.no).padStart(2,'0')}</div>
-            <div class="band-meta">${clsLabel(band)}${band.hasCG?'　·　CG 有':'　·　CG 無'}</div>
-            <div class="band-name">${band.name}</div>
-          </div>
-          ${cap.fields.map(f=>{
-            const val=bandEntry(judge.id,band.id)[f]; const filled=(val!==""&&val!=null);
-            return `<div class="field">
-              <div class="field-label"><span class="fl-main">${f}</span><span class="fl-sub">${FIELD_LABEL[f]}　/　0–100</span></div>
-              <div class="stepper">
-                <button class="step-btn" data-step="-1" data-field="${f}" aria-label="${f} を1減らす">−</button>
-                <input class="score-in ${filled?'filled':''}" type="number" inputmode="numeric" min="0" max="100" data-field="${f}" value="${filled?val:''}" placeholder="––" aria-label="${f} の点数">
-                <button class="step-btn" data-step="1" data-field="${f}" aria-label="${f} を1増やす">＋</button>
-              </div></div>`;}).join('')}
-          <div class="ttl-box">
-            <span class="tl">Ttl<small>(${cap.fields.join(' ＋ ')}) ÷ 10</small></span>
-            <span class="ttl-right"><span class="rank-now empty" id="ranknow">– 位</span><span class="ttl-val empty" id="ttl">––.––</span></span>
-          </div>
-        </div>
-        <div class="nav">
-          <button class="nav-btn" id="prev" ${state.bandIndex===0?'disabled':''}>‹ 前</button>
-          <button class="nav-btn primary" id="next">${state.bandIndex===bands.length-1?'最初へ ↺':'次 ›'}</button>
-        </div>
-      </div>
-      <div class="panel">
-        <div class="panel-tabs">
-          <button class="ptab ${state.panel==='standings'?'active':''}" data-tab="standings">順位表</button>
-          <button class="ptab ${state.panel==='sync'?'active':''}" data-tab="sync">同期データ</button>
-        </div>
-        <div class="panel-body" id="panelbody"></div>
-      </div>
-    </div>`;
-
-  app.querySelectorAll('.score-in').forEach(inp=>{
-    inp.addEventListener('input',()=>onScoreInput(inp.dataset.field,inp.value,inp));
-    inp.addEventListener('blur',()=>{const c=clampScore(inp.value);inp.value=c===""?"":c;onScoreInput(inp.dataset.field,inp.value,inp);});
-  });
-  app.querySelectorAll('.step-btn').forEach(b=>b.addEventListener('click',()=>{
-    const f=b.dataset.field, inp=app.querySelector(`.score-in[data-field="${f}"]`);
-    const cur=inp.value===""?0:parseInt(inp.value,10);
-    inp.value=clampScore(cur+parseInt(b.dataset.step,10)); onScoreInput(f,inp.value,inp);
-  }));
-  app.querySelector('#prev').addEventListener('click',()=>{if(state.bandIndex>0){state.bandIndex--;render();}});
-  app.querySelector('#next').addEventListener('click',()=>{state.bandIndex=(state.bandIndex+1)%bands.length;render();});
+function renderMain(){
+  const judge=judgeOf(state.judgeId),cap=capOf(judge);
+  const divtabs=DIVISIONS.length>1?`<div class="divtabs">${DIVISIONS.map(d=>`<button class="divtab ${d.id===state.curDiv?'active':''}" data-dv="${d.id}">${d.name}</button>`).join('')}</div>`:'';
+  app.innerHTML=`
+    <div class="top">
+      <div class="who"><div class="nm">${judge.name}</div><div class="cap">${cap?cap.name:''}</div></div>
+      <span class="pill ok" id="syncpill">同期済み</span>
+      <button class="ghost" id="switch">変更</button>
+    </div>
+    ${divtabs}
+    <div class="tabs">
+      <button class="tab ${state.tab==='criteria'?'active':''}" data-tab="criteria">審査項目</button>
+      <button class="tab ${state.tab==='input'?'active':''}" data-tab="input">スコア入力</button>
+      <button class="tab ${state.tab==='ranking'?'active':''}" data-tab="ranking">ランキング</button>
+    </div>
+    <div class="body" id="body"></div>
+    ${state.tab==='input'?`<div class="decide"><button class="decidebtn ${state.decided?'done':''}" id="decide">${state.decided?'✓ 決定済み（タップで取消）':'全て入力・確認したら決定'}</button><div class="decidenote">決定すると管理画面に反映されます</div></div>`:''}`;
+  // wire top/tabs
   app.querySelector('#switch').addEventListener('click',()=>{state.judgeId=null;render();});
-  app.querySelectorAll('.jdivtab').forEach(b=>b.addEventListener('click',()=>{curDiv=b.dataset.jdiv;state.bandIndex=0;render();}));
-  app.querySelectorAll('.ptab').forEach(t=>t.addEventListener('click',()=>{
-    state.panel=t.dataset.tab;
-    app.querySelectorAll('.ptab').forEach(x=>x.classList.toggle('active',x.dataset.tab===state.panel));
-    renderPanel();
-  }));
-  // delegated tap-to-jump on standings
-  app.querySelector('#panelbody').addEventListener('click',e=>{
-    const row=e.target.closest('.st-row'); if(!row)return;
-    const idx=curBands().findIndex(b=>b.id===row.dataset.bid); if(idx>=0){state.bandIndex=idx;render();}
-  });
-
-  renderPanel(); updateLive(); updateSyncUI();
+  app.querySelectorAll('.divtab').forEach(b=>b.addEventListener('click',()=>{state.curDiv=b.dataset.dv;state.bandIndex=0;state.buf='';render();}));
+  app.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{state.tab=b.dataset.tab;state.buf='';render();if(state.tab==='ranking')pollShare();}));
+  const dec=app.querySelector('#decide');if(dec)dec.addEventListener('click',toggleDecide);
+  updateSync();
+  if(state.tab==='criteria')renderCriteria();
+  else if(state.tab==='ranking')renderRanking();
+  else renderInput();
 }
 
-function renderPanel(){
-  const body=app.querySelector('#panelbody'); if(!body)return;
-  const judge=judgeOf(state.judgeId);
-  if(state.panel==='sync'){
-    const obj={}; obj[judge.id]=state.scores[judge.id]||{};
-    body.innerHTML=`<div class="sync-pane">
-      <p class="path">scores / ${judge.id} / {団体ID}</p>
-      <pre id="json">${JSON.stringify(obj,null,2)}</pre>
-      <button class="copy-btn" id="copy">この審査員の素点をコピー</button></div>`;
-    body.querySelector('#copy').addEventListener('click',copyScores);
-  } else {
-    body.innerHTML=`<div class="st-list" id="stlist">${standingsHTML()}</div>`;
+function renderCriteria(){
+  const cap=capOf(judgeOf(state.judgeId));const fields=cap?cap.fields:[];
+  document.getElementById('body').innerHTML=`<div class="crit">
+    <div class="band">${cap?cap.name:''} の審査項目</div>
+    ${fields.map((f,i)=>`<div class="item"><h3>${i===0?'①':'②'} ${f} <span style="color:var(--muted);font-weight:400">/100</span></h3><p>${FIELD_DESC[f]||''}</p></div>`).join('')}
+    <p class="note"><code>Total = (① + ②) ÷ 10</code>（20点満点）<br>各団体に①②を0〜100で入力します。合計・順位は自動計算されます。</p>
+    ${isCGJudge()?'<p class="note">カラーガード「無」の団体は入力不要です（自動でロックされます）。</p>':''}
+  </div>`;
+}
+
+function renderInput(){
+  const judge=judgeOf(state.judgeId),cap=capOf(judge),bands=curBands();
+  if(state.bandIndex>=bands.length)state.bandIndex=0;
+  const band=bands[state.bandIndex];const body=document.getElementById('body');
+  if(!band){body.innerHTML='<div style="padding:50px 20px;text-align:center;color:var(--muted)">この部門に団体がありません。</div>';return;}
+  const fields=cap.fields;const e=entry(judge.id,band.id);
+  const locked=bandLocked(band);
+  const bar=`<div class="bandbar">
+      <button class="navbtn" id="prev" ${state.bandIndex===0?'disabled':''}>‹</button>
+      <div class="bn"><span class="no">NO.${String(band.no).padStart(2,'0')}　${state.bandIndex+1}/${bands.length}</span>
+      <div class="tm">${band.name}</div><div class="meta">${clsLabel(band)}${band.hasCG===false?' · CG無':' · CG有'}</div></div>
+      <button class="navbtn" id="next">›</button></div>`;
+  if(locked){
+    body.innerHTML=`<div class="inp">${bar}<div class="cglock"><div class="big">カラーガード 無</div>この団体は入力不要です。<br>「›」で次の団体へ進んでください。</div></div>`;
+    wireNav(bands);return;
   }
+  const ttl=ttlOf(judge.id,band.id);const st=computeStandings(judge.id);const me=st.find(r=>r.band.id===band.id);
+  const cmt=(state.comments[judge.id]&&state.comments[judge.id][band.id])||'';
+  body.innerHTML=`<div class="inp">
+    ${bar}
+    <div class="fields">
+      ${fields.map((f,i)=>{const v=e[f];const has=(v!=null&&v!=='');return `<div class="fbox ${state.active===i?'active':''}" data-f="${i}">
+        <div class="fl">${i===0?'①':'②'} ${f}</div><div class="fv ${has?'':'empty'}">${has?v:'––'}</div></div>`;}).join('')}
+    </div>
+    <div class="ttlbar"><span class="lab">Total</span><span class="val">${ttl!=null?ttl.toFixed(2):'––.––'}</span>${me&&me.rank?`<span class="rk">${me.rank}位</span>`:''}</div>
+    <div class="cmt"><input id="cmt" placeholder="コメント（任意）" value="${String(cmt).replace(/"/g,'&quot;')}"></div>
+    <div class="keypad">
+      ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" data-k="${n}">${n}</button>`).join('')}
+      <button class="key util" data-k="back">⌫</button>
+      <button class="key" data-k="0">0</button>
+      <button class="key util" data-k="clear">C</button>
+    </div>
+  </div>`;
+  // wire fields
+  body.querySelectorAll('.fbox').forEach(fb=>fb.addEventListener('click',()=>{state.active=+fb.dataset.f;state.buf=String(e[fields[state.active]]??'');render();}));
+  body.querySelectorAll('.key').forEach(k=>k.addEventListener('click',()=>onKey(k.dataset.k)));
+  const ci=document.getElementById('cmt');ci.addEventListener('input',()=>onComment(ci.value));
+  wireNav(bands);
 }
-function standingsHTML(){
-  const judge=judgeOf(state.judgeId), cap=capOf(judge);
-  const f1=cap.fields[0], f2=cap.fields[1];
-  const list=computeStandings(judge.id);
-  const counts={}; list.forEach(r=>{ if(r.ttl!=null) counts[r.ttl]=(counts[r.ttl]||0)+1; });
-  const tieGroups=Object.values(counts).filter(c=>c>1).length;
-  const warn = tieGroups>0
-    ? `<div class="st-warn"><span class="wm">⚠ 同点</span><span>${tieGroups}組の同点があります。順位の確定にご注意ください。</span></div>` : '';
-  const header=`<div class="st-headrow"><span></span><span class="h-name">団体</span><span>${f1}</span><span>${f2}</span><span>Ttl</span></div>`;
-  const rows=list.map(r=>{
-    const cur=r.band.id===(curBands()[state.bandIndex]||{}).id;
-    const empty=r.ttl==null;
-    const tie=!empty && counts[r.ttl]>1;
-    const e=bandEntry(judge.id,r.band.id);
-    const v1=(e[f1]!==""&&e[f1]!=null)?e[f1]:'–';
-    const v2=(e[f2]!==""&&e[f2]!=null)?e[f2]:'–';
-    return `<button class="st-row ${cur?'cur':''} ${empty?'empty':''} ${tie?'tie':''}" data-bid="${r.band.id}">
-      <span class="st-rank">${empty?'–':r.rank}</span>
-      <span class="st-name"><span class="st-no">${String(r.band.no).padStart(2,'0')}</span><span class="st-bn">${r.band.name}</span>${tie?'<span class="tieflag">⚠</span>':''}</span>
-      <span class="st-sub">${empty?'–':v1}</span>
-      <span class="st-sub">${empty?'–':v2}</span>
-      <span class="st-ttl">${empty?'––.––':r.ttl.toFixed(2)}</span>
-    </button>`;}).join('');
-  return warn+header+rows;
+function wireNav(bands){
+  const p=document.getElementById('prev'),n=document.getElementById('next');
+  if(p)p.addEventListener('click',()=>{if(state.bandIndex>0){state.bandIndex--;state.active=0;state.buf='';render();}});
+  if(n)n.addEventListener('click',()=>{state.bandIndex=(state.bandIndex+1)%bands.length;state.active=0;state.buf='';render();});
 }
-
-function onScoreInput(field,value,inputEl){
-  const judge=judgeOf(state.judgeId), band=curBands()[state.bandIndex];
-  const v=clampScore(value);
-  state.scores[judge.id]=state.scores[judge.id]||{};
-  state.scores[judge.id][band.id]=state.scores[judge.id][band.id]||{};
-  if(v===""){delete state.scores[judge.id][band.id][field];}
-  else{state.scores[judge.id][band.id][field]=v;}
+function onKey(k){
+  const judge=judgeOf(state.judgeId),cap=capOf(judge),band=curBands()[state.bandIndex];
+  const field=cap.fields[state.active];
+  let buf=state.buf||'';
+  if(k==='clear')buf='';
+  else if(k==='back')buf=buf.slice(0,-1);
+  else{const nb=buf+k;if(parseInt(nb,10)>100)buf=k==='0'?'100':String(parseInt(k,10));else buf=nb.replace(/^0+(?=\d)/,'');}
+  state.buf=buf;
+  const val=buf===''?null:Math.min(100,parseInt(buf,10));
+  state.scores[judge.id]=state.scores[judge.id]||{};state.scores[judge.id][band.id]=state.scores[judge.id][band.id]||{};
+  if(val==null)delete state.scores[judge.id][band.id][field];else state.scores[judge.id][band.id][field]=val;
   if(Object.keys(state.scores[judge.id][band.id]).length===0)delete state.scores[judge.id][band.id];
-  inputEl.classList.toggle('filled',v!=="");
-  persistScores();
-  queueScore(judge.id,band.id);
-  updateLive(true);
+  persist();enqueue('score',judge.id,band.id);autoUndecide();
+  // auto-advance to 2nd field when 1st reaches 2+ digits? keep manual. just refresh values
+  refreshInputValues();
 }
+function refreshInputValues(){
+  const judge=judgeOf(state.judgeId),cap=capOf(judge),band=curBands()[state.bandIndex];const e=entry(judge.id,band.id);
+  const boxes=document.querySelectorAll('.fbox');
+  cap.fields.forEach((f,i)=>{if(boxes[i]){const v=e[f];const has=(v!=null&&v!=='');const fv=boxes[i].querySelector('.fv');fv.textContent=has?v:'––';fv.classList.toggle('empty',!has);boxes[i].classList.toggle('active',state.active===i);}});
+  const ttl=ttlOf(judge.id,band.id);const tv=document.querySelector('.ttlbar .val');if(tv)tv.textContent=ttl!=null?ttl.toFixed(2):'––.––';
+  const st=computeStandings(judge.id);const me=st.find(r=>r.band.id===band.id);const rk=document.querySelector('.ttlbar .rk');if(rk)rk.textContent=me&&me.rank?me.rank+'位':'';
+}
+function onComment(v){
+  const judge=judgeOf(state.judgeId),band=curBands()[state.bandIndex];
+  state.comments[judge.id]=state.comments[judge.id]||{};
+  if(v.trim()==='')delete state.comments[judge.id][band.id];else state.comments[judge.id][band.id]=v;
+  persist();enqueue('comment',judge.id,band.id);autoUndecide();
+}
+function autoUndecide(){ if(state.decided){state.decided=false;putStatus();const d=document.getElementById('decide');if(d){d.className='decidebtn';d.textContent='全て入力・確認したら決定';}} }
+function toggleDecide(){state.decided=!state.decided;putStatus();const d=document.getElementById('decide');if(d){d.className='decidebtn'+(state.decided?' done':'');d.textContent=state.decided?'✓ 決定済み（タップで取消）':'全て入力・確認したら決定';}}
 
-let lastComplete=false;
-function updateLive(checkToast){
-  const judge=judgeOf(state.judgeId), band=curBands()[state.bandIndex];
-  if(!band)return;
-  const ttl=liveTtl(judge.id,band.id);
-  const ttlEl=app.querySelector('#ttl');
-  if(ttlEl){ if(ttl==null){ttlEl.textContent='––.––';ttlEl.classList.add('empty');}
-    else{ttlEl.textContent=ttl.toFixed(2);ttlEl.classList.remove('empty');} }
-  // current rank
-  const standings=computeStandings(judge.id);
-  const me=standings.find(r=>r.band.id===band.id);
-  const rn=app.querySelector('#ranknow');
-  if(rn){ if(me&&me.ttl!=null){rn.textContent=me.rank+' 位';rn.classList.remove('empty');}
-    else{rn.textContent='– 位';rn.classList.add('empty');} }
-  // rail + counter
-  const pips=app.querySelectorAll('.pip'); let done=0;
-  curBands().forEach((b,i)=>{const c=isBandComplete(judge.id,b.id);if(c)done++;
-    if(pips[i])pips[i].className='pip '+(i===state.bandIndex?'current':(c?'done':''));});
-  const rl=app.querySelector('.rail-label b'); if(rl)rl.textContent=done;
-  // panel refresh
-  if(state.panel==='standings'){ const sl=app.querySelector('#stlist'); if(sl)sl.innerHTML=standingsHTML(); }
-  else { const j=app.querySelector('#json'); if(j){const o={};o[judge.id]=state.scores[judge.id]||{};j.textContent=JSON.stringify(o,null,2);} }
-  // toast
-  if(checkToast){ const now=isBandComplete(judge.id,band.id);
-    if(now&&!lastComplete)showToast('記録しました'); lastComplete=now; }
-  else lastComplete=isBandComplete(judge.id,band.id);
+function renderRanking(){
+  const judge=judgeOf(state.judgeId);const shared=state.shareState==='shared';
+  const body=document.getElementById('body');
+  const toggle=`<div class="rtoggle">
+    <button class="${state.rankMode==='self'?'active':''}" data-rm="self">自分の採点順</button>
+    <button class="${state.rankMode==='final'?'active':''}" data-rm="final" ${shared?'':'disabled'}>最終リキャップ${shared?'':'（共有待ち）'}</button></div>`;
+  if(state.rankMode==='final'&&shared){
+    const bands=curBands().map(b=>({band:b,final:finalOf(b)}));
+    const ent=bands.filter(r=>r.final!=null);ent.forEach(r=>r.rank=1+ent.filter(o=>o.final>r.final).length);
+    ent.sort((a,b)=>a.rank-b.rank||a.band.no-b.band.no);
+    const counts={};ent.forEach(r=>{const k=r.final.toFixed(3);counts[k]=(counts[k]||0)+1;});
+    body.innerHTML=`<div class="rank">${toggle}
+      <div class="st-head"><span></span><span class="hn">団体</span><span>GE</span><span>Vis/Mus</span><span>Final</span></div>
+      ${ent.map(r=>{const e=famSub(r.band.id,'GE',r.band.hasCG!==false),v=famSub(r.band.id,'Visual',r.band.hasCG!==false),m=famSub(r.band.id,'Music',r.band.hasCG!==false);
+        return `<div class="st-row"><span class="st-rk">${r.rank}</span>
+        <span class="st-nm"><span class="no">${String(r.band.no).padStart(2,'0')}</span><span class="bn">${r.band.name}</span></span>
+        <span class="st-sub">${e!=null?e.toFixed(1):'–'}</span><span class="st-sub">${v!=null?v.toFixed(1):'–'}/${m!=null?m.toFixed(1):'–'}</span>
+        <span class="st-ttl">${r.final.toFixed(3)}</span></div>`;}).join('')}
+      <p class="rinfo">全ジャッジ集計後の最終順位（${divName(state.curDiv)}）。運営が共有した確定データです。</p></div>`;
+  }else{
+    const st=computeStandings(judge.id);const cap=capOf(judge);const f=cap?cap.fields:['①','②'];
+    const counts={};st.forEach(r=>{if(r.ttl!=null){const k=r.ttl.toFixed(2);counts[k]=(counts[k]||0)+1;}});
+    const ties=Object.values(counts).filter(c=>c>1).length;
+    const curId=(curBands()[state.bandIndex]||{}).id;
+    body.innerHTML=`<div class="rank">${toggle}
+      ${ties?`<div class="st-warn">⚠ 同点が ${ties}組あります</div>`:''}
+      <div class="st-head"><span></span><span class="hn">団体</span><span>${f[0]}</span><span>${f[1]}</span><span>Total</span></div>
+      ${st.map(r=>{const empty=r.ttl==null;const tie=!empty&&counts[r.ttl.toFixed(2)]>1;const e=entry(judge.id,r.band.id);
+        return `<div class="st-row ${r.band.id===curId?'cur':''} ${empty?'empty':''} ${tie?'tie':''}">
+        <span class="st-rk">${empty?'–':r.rank}</span>
+        <span class="st-nm"><span class="no">${String(r.band.no).padStart(2,'0')}</span><span class="bn">${r.band.name}</span></span>
+        <span class="st-sub">${empty?'–':(e[f[0]]??'–')}</span><span class="st-sub">${empty?'–':(e[f[1]]??'–')}</span>
+        <span class="st-ttl">${empty?'––.––':r.ttl.toFixed(2)}</span></div>`;}).join('')}
+      <p class="rinfo">あなたの採点順（${divName(state.curDiv)}）。${shared?'「最終リキャップ」で全体順位も見られます。':'全体の最終順位は運営が共有後に表示されます。'}</p></div>`;
+  }
+  body.querySelectorAll('.rtoggle button').forEach(b=>b.addEventListener('click',()=>{if(b.disabled)return;state.rankMode=b.dataset.rm;if(state.rankMode==='final')pollShare();render();}));
 }
-
-function copyScores(){
-  const judge=judgeOf(state.judgeId); const o={}; o[judge.id]=state.scores[judge.id]||{};
-  navigator.clipboard?.writeText(JSON.stringify(o,null,2)).then(()=>showToast('コピーしました'),()=>showToast('コピーできませんでした'));
-}
-let toastTimer;
-function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');
-  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1400);}
 
 boot();
 </script>
