@@ -115,6 +115,12 @@
   .st-sub{font-family:var(--mono);font-size:13px;color:var(--muted);text-align:center;}
   .st-ttl{font-family:var(--mono);font-weight:700;font-size:15px;text-align:center;}
   .st-row.empty .st-sub,.st-row.empty .st-ttl{color:var(--line);}
+  /* final recap: wider numeric columns, smaller font (prevent overlap) */
+  .rank.final .st-head,.rank.final .st-row{grid-template-columns:26px 1fr 46px 74px 60px;gap:6px;padding:9px 12px;}
+  .rank.final .st-sub{font-size:11px;letter-spacing:-.02em;}
+  .rank.final .st-ttl{font-size:13px;}
+  .rank.final .st-rk{font-size:15px;}
+  .rank.final .st-nm .bn{font-size:12px;}
   .rinfo{color:var(--muted);font-size:12px;padding:10px 16px;line-height:1.6;}
 
   /* decide bar */
@@ -366,7 +372,7 @@ function renderRanking(){
     const ent=bands.filter(r=>r.final!=null);ent.forEach(r=>r.rank=1+ent.filter(o=>o.final>r.final).length);
     ent.sort((a,b)=>a.rank-b.rank||a.band.no-b.band.no);
     const counts={};ent.forEach(r=>{const k=r.final.toFixed(3);counts[k]=(counts[k]||0)+1;});
-    body.innerHTML=`<div class="rank">${toggle}
+    body.innerHTML=`<div class="rank final">${toggle}
       <div class="st-head"><span></span><span class="hn">団体</span><span>GE</span><span>Vis/Mus</span><span>Final</span></div>
       ${ent.map(r=>{const e=famSub(r.band.id,'GE',r.band.hasCG!==false),v=famSub(r.band.id,'Visual',r.band.hasCG!==false),m=famSub(r.band.id,'Music',r.band.hasCG!==false);
         return `<div class="st-row"><span class="st-rk">${r.rank}</span>

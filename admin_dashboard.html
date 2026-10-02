@@ -46,7 +46,7 @@
   .cf-actions{display:flex;gap:9px;flex-wrap:wrap;}
   .share-btn{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase;padding:11px 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;white-space:nowrap;}
   .share-btn.on{background:rgba(95,208,197,.12);border-color:var(--signal);color:var(--signal);}
-  .subs-cell .dec{font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.04em;color:#06251f;background:var(--signal);border-radius:4px;padding:1px 5px;margin-right:6px;vertical-align:middle;}
+  .subs-cell .dec{flex:0 0 auto;font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.04em;color:#06251f;background:var(--signal);border-radius:4px;padding:1px 5px;vertical-align:middle;}
   .jedit{display:flex;align-items:center;gap:5px;}
   .jedit .ed{width:44px;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--ink);font-family:var(--mono);font-size:12px;padding:4px 2px;outline:none;}
   .jedit .ed:focus{border-color:var(--gold);}
@@ -68,8 +68,8 @@
   .subs-cell{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);border-left:3px solid var(--line);}
   .subs-cell.full{border-left-color:var(--signal);}
   .subs-cell.partial{border-left-color:var(--gold);}
-  .subs-cell .sj{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .subs-cell .sc{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .subs-cell .sj{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .subs-cell .sc{flex:0 0 auto;font-family:var(--mono);font-size:12px;color:var(--muted);}
   .subs-cell.full .sc{color:var(--signal);}
   .subs-cell.partial .sc{color:var(--gold);}
 
@@ -329,7 +329,7 @@ function render(){
 
   const subs=JUDGES.map(j=>{const done=divBands.filter(b=>{const rv=rawVals(j.id,b.id);return rv&&rv.every(v=>v!=null);}).length;const decided=!!(JUDGE_STATUS[j.id]&&JUDGE_STATUS[j.id].decided);return {j,done,total:divBands.length,decided};});
   const totalDone=subs.reduce((a,s)=>a+s.done,0);
-  const subsHTML=`<div class="subs"><div class="subs-head">提出状況 <span>${totalDone} / ${JUDGES.length*divBands.length} 入力　·　決定 ${subs.filter(s=>s.decided).length}/${JUDGES.length}</span></div><div class="subs-grid">${subs.map(s=>`<div class="subs-cell ${s.done===s.total&&s.total>0?'full':(s.done>0?'partial':'none')}"><span class="sj">${s.decided?'<span class="dec">決定</span>':''}${s.j.name}</span><span class="sc">${s.done}/${s.total}</span></div>`).join('')}</div></div>`;
+  const subsHTML=`<div class="subs"><div class="subs-head">提出状況 <span>${totalDone} / ${JUDGES.length*divBands.length} 入力　·　決定 ${subs.filter(s=>s.decided).length}/${JUDGES.length}</span></div><div class="subs-grid">${subs.map(s=>`<div class="subs-cell ${s.done===s.total&&s.total>0?'full':(s.done>0?'partial':'none')}"><span class="sj">${s.j.name}</span>${s.decided?'<span class="dec">決定</span>':''}<span class="sc">${s.done}/${s.total}</span></div>`).join('')}</div></div>`;
 
   const tabsHTML=`<div class="divtabs">${DIVISIONS.map(d=>`<button class="divtab ${d.id===curDiv?'active':''}" data-divtab="${d.id}">${d.name}</button>`).join('')}</div>`;
 
