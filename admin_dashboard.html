@@ -124,6 +124,9 @@
   .cg-toggle{font-family:var(--mono);font-weight:700;font-size:12px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);border-radius:7px;padding:5px 9px;cursor:pointer;}
   .cg-toggle.no{color:var(--danger);border-color:var(--danger);}
   .cg-toggle.yes{color:var(--signal);border-color:#2f5e58;}
+  .cg-static{font-family:var(--mono);font-weight:700;font-size:12px;border:1px solid var(--line);border-radius:7px;padding:4px 9px;}
+  .cg-static.no{color:var(--danger);border-color:var(--danger);}
+  .cg-static.yes{color:var(--signal);border-color:#2f5e58;}
 
   /* detail */
   tr.detail-row td{padding:0;border-bottom:1px solid var(--line);}
@@ -255,7 +258,7 @@ function familySubtotal(bandId,family,hasCG){
   return (ttls.reduce((a,b)=>a+b,0)/ttls.length)*FACTOR[family];   // 平均 × 係数
 }
 function bandResult(b){
-  const hasCG=admin[b.id].hasCG, pen=admin[b.id].pen||0;
+  const hasCG=!!b.hasCG, pen=(admin[b.id]&&admin[b.id].pen)||0;
   const efc=familySubtotal(b.id,'GE',hasCG);
   const vis=familySubtotal(b.id,'Visual',hasCG);
   const mus=familySubtotal(b.id,'Music',hasCG);
@@ -387,7 +390,7 @@ function render(){
               <td><span class="sc">${f2(r.efc)}<span class="rk">${r.efcRank}位</span></span></td>
               <td><span class="sc">${f2(r.vis)}<span class="rk">${r.visRank}位</span></span></td>
               <td><span class="sc">${f2(r.mus)}<span class="rk">${r.musRank}位</span></span></td>
-              <td><button class="cg-toggle ${r.hasCG?'yes':'no'}" data-cg="${r.band.id}">${r.hasCG?'有':'無'}</button></td>
+              <td><span class="cg-static ${r.hasCG?'yes':'no'}" title="CGの有無は設定編集ページで変更">${r.hasCG?'有':'無'}</span></td>
               <td><input class="pen-in" type="number" min="0" step="0.1" data-pen="${r.band.id}" value="${r.pen||''}" placeholder="0"></td>
               <td class="c-final">${f3(r.final)}</td>
               <td><span class="prize ${pz.cls}">${pz.label}</span></td>
@@ -410,14 +413,12 @@ function render(){
   // wire
   wrap.querySelectorAll('.band-row').forEach(tr=>{
     tr.addEventListener('click',e=>{
-      if(e.target.closest('.pen-in')||e.target.closest('.cg-toggle'))return;
+      if(e.target.closest('.pen-in'))return;
       const d=wrap.querySelector(`.detail-row[data-detail="${tr.dataset.bid}"]`);
       d.classList.toggle('show'); tr.classList.toggle('open');
     });
   });
-  wrap.querySelectorAll('.cg-toggle').forEach(b=>b.addEventListener('click',e=>{
-    e.stopPropagation(); admin[b.dataset.cg].hasCG=!admin[b.dataset.cg].hasCG; render();
-  }));
+
   wrap.querySelectorAll('.pen-in').forEach(inp=>{
     inp.addEventListener('click',e=>e.stopPropagation());
     inp.addEventListener('change',()=>{
