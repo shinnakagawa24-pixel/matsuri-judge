@@ -138,6 +138,7 @@ const base=CONFIG.DB_URL.replace(/\/+$/,'');
 const cfgURL=`${base}/events/${CONFIG.EVENT_ID}/config.json`;
 const scoresURL=`${base}/events/${CONFIG.EVENT_ID}/scores.json`;
 const confirmURL=`${base}/events/${CONFIG.EVENT_ID}/confirmed.json`;
+const resetNodes=['scores','confirmed','comments','judgeStatus','share'];
 
 document.getElementById('dbline').textContent=base;
 document.getElementById('pathline').textContent=`events/${CONFIG.EVENT_ID}/config`;
@@ -194,16 +195,22 @@ async function verify(){
 }
 
 async function resetScores(){
-  if(!confirm('この大会の入力済みスコアと確定状態をすべて削除します。設定（団体・審査員・配点）は残ります。よろしいですか？'))return;
-  clearLog(); log('スコアと確定状態を削除します…','warn');
-  try{
-    const r1=await fetch(scoresURL,{method:'DELETE'});
-    if(!r1.ok){log(`✗ スコア削除に失敗（HTTP ${r1.status}）`,'err');return;}
-    const r2=await fetch(confirmURL,{method:'DELETE'});
-    if(!r2.ok){log(`△ スコアは消しましたが、確定状態の削除に失敗（HTTP ${r2.status}）`,'warn');}
-    log('✓ スコアを全消去し、確定状態もリセットしました。設定はそのままです。','ok');
-    log('管理画面は「入力中」に戻ります。','info');
-  }catch(e){log('✗ 通信エラー：'+e.message,'err');}
+  if(!confirm('この大会の入力データ（スコア・コメント・各ジャッジの決定・スコア確定・共有）をすべて削除します。設定（団体・審査員・配点）は残ります。よろしいですか？'))return;
+  clearLog(); log('入力データを削除します…','warn');
+  let failed=[];
+  for(const node of resetNodes){
+    try{
+      const res=await fetch(`${base}/events/${CONFIG.EVENT_ID}/${node}.json`,{method:'DELETE'});
+      if(!res.ok){failed.push(node);log(`△ ${node} の削除に失敗（HTTP ${res.status}）`,'warn');}
+      else log(`✓ ${node} を削除`,'info');
+    }catch(e){failed.push(node);log(`✗ ${node} 通信エラー：${e.message}`,'err');}
+  }
+  if(failed.length===0){
+    log('✓ すべての入力データを消去しました。設定はそのままです。','ok');
+    log('管理画面は「入力中」・審査員ページは未入力に戻ります。','info');
+  }else{
+    log(`△ 一部失敗：${failed.join(', ')}。もう一度実行すると残りも消えます。`,'warn');
+  }
 }
 
 document.getElementById('upload').addEventListener('click',upload);
