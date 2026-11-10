@@ -157,6 +157,38 @@
   .decidebtn:active{transform:scale(.99);}
   .decidenote{text-align:center;font-size:11px;color:var(--muted);margin-top:6px;}
 
+  /* criteria dropdown */
+  .crit .cap-sub{color:var(--muted);font-size:12px;margin:-6px 0 14px;line-height:1.5;}
+  .crit .acc{border:1px solid var(--line);border-radius:12px;margin-bottom:12px;background:var(--panel);overflow:hidden;}
+  .crit .acc-head{display:flex;align-items:center;gap:10px;padding:14px 15px;cursor:pointer;user-select:none;}
+  .crit .acc-badge{font-family:var(--mono);font-weight:700;font-size:12px;color:var(--onpink);background:var(--gold);border-radius:7px;min-width:30px;height:26px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .crit .acc-tt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .crit .acc-tt .t1{font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.03em;line-height:1.1;}
+  .crit .acc-tt .t2{font-family:var(--display);font-size:9.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);line-height:1.15;}
+  .crit .acc-cv{color:var(--muted);font-size:13px;transition:transform .18s;flex:0 0 auto;}
+  .crit .acc.open .acc-cv{transform:rotate(180deg);}
+  .crit .acc-body{display:none;border-top:1px solid var(--line);padding:6px 15px 12px;}
+  .crit .acc.open .acc-body{display:block;}
+  .crit .ci{display:flex;gap:10px;padding:9px 2px;border-bottom:1px solid rgba(255,255,255,.04);}
+  .crit .ci:last-child{border-bottom:0;}
+  .crit .ci .num{font-family:var(--mono);font-weight:700;font-size:12px;color:var(--gold);flex:0 0 auto;min-width:22px;}
+  .crit .ci .tx{font-size:12.5px;line-height:1.5;color:var(--ink);}
+  .crit .ci .tx b{font-weight:600;}
+  .crit .hint{color:var(--muted);font-size:11px;text-align:center;margin-top:4px;}
+
+  /* lock / edit-request */
+  .lockstatus{text-align:center;font-family:var(--display);font-weight:600;font-size:13px;color:#ff6b86;margin-bottom:8px;letter-spacing:.03em;}
+  .lockrow{display:flex;flex-direction:column;gap:8px;}
+  .lockmsg{font-size:11.5px;color:var(--muted);text-align:center;line-height:1.5;}
+  .reqbtn{width:100%;padding:12px;border-radius:12px;border:1px solid var(--gold);background:var(--gold);color:var(--onpink);font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.04em;cursor:pointer;}
+  .reqbtn.cancel{background:transparent;color:var(--muted);border-color:var(--line);font-weight:600;}
+  .reqbtn:active{transform:scale(.99);}
+  .lockpanel{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:26px 24px;text-align:center;color:var(--muted);}
+  .lockpanel .lk{font-size:30px;}
+  .lockpanel .big{font-family:var(--display);font-weight:600;font-size:17px;color:#ff6b86;}
+  .lockpanel .sm{font-size:12px;line-height:1.6;}
+  .fbox.ro{opacity:.9;cursor:default;}
+
   @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 </style>
 </head>
@@ -181,10 +213,87 @@ function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 let EV={name:'Marching Matsuri',date:''};
 let CAPTIONS=[],JUDGES=[],BANDS=[],DIVISIONS=[],CLASSES=[],FAMILIES={},PRIZE=[];
 const state={judgeId:null,curDiv:null,tab:'input',bandIndex:0,active:0,buf:'',
-  scores:lsGet(LS.scores,{}),comments:lsGet(LS.comments,{}),decided:false,finalConfirmed:false,
-  shareState:'none',allScores:{},rankMode:'self',expBand:null};
+  scores:lsGet(LS.scores,{}),comments:lsGet(LS.comments,{}),decided:false,finalConfirmed:false,editRequest:false,
+  shareState:'none',allScores:{},rankMode:'self',expBand:null,critOpen:{u:false,l:false}};
+let lastStatusWrite=0;
 const FIELD_DESC={Rep:'Repertoire Effect / 構成の効果',Pfm:'Performers Effect / 奏者の表現',
   Cont:'Content / 内容',Achv:'Achievement / 達成度',Sbst:'Substance / 内容の充実'};
+
+/* ===== 審査項目データ（6キャプション／内容=上段・達成度=下段、各4観点）===== */
+const CRITERIA={
+ GE:{upLabel:'REPERTOIRE',up:[
+   '多様性 / 変化：シーンや見せ場の種類と展開の幅',
+   '構成 / 配置：テーマや意図を生かす流れと見せ場の配置',
+   '表現の幅：音楽と動きの結びつき、相乗効果の設計',
+   '挑戦 / 難易度：独創性や芸術性を生かす新たな提案'],
+  lo:[
+   '効果の実現：意図した見せ場や音楽と動きの効果の実現度',
+   '調和 / 一貫性：役割や個性、その作品らしさの一貫した表現',
+   '効果の持続：展開や場面の変化を通じた効果の持続',
+   '伝達力 / 表現力：実現した効果を生かし、観客を引き込む力']},
+ VA:{upLabel:'COMPOSITION',up:[
+   '多様性 / 変化：隊形や動きの種類と変化、多様さ',
+   '構成 / 配置：配置や動きの組み合わせの工夫',
+   '表現の幅：動きの強弱や見せ方、音楽との結びつき',
+   '挑戦 / 難易度：複雑な隊形や難しい動きへの挑戦'],
+  lo:[
+   '正確性 / 基本技術：動きや形の明確さ、タイミングの正確さ',
+   '調和 / 一貫性：位置や間隔、動き方や表現の統一感',
+   '高負荷時の安定感：難しい動きでの持続力、ミスからの立て直し',
+   '伝達力 / 表現力：確かな技術を土台とした動きの表現力']},
+ CG:{upLabel:'COMPOSITION',up:[
+   '多様性 / 変化：身体や手具の使い方、動きや技の幅',
+   '構成 / 配置：身体と手具の組み合わせ、振付や配置の工夫',
+   '表現の幅：音楽を引き立てる振付、ショー全体との結びつき',
+   '挑戦 / 難易度：複数の動作や難しい技への挑戦'],
+  lo:[
+   '正確性 / 基本技術：基本の定着、身体や手具の扱いの正確さ',
+   '調和 / 一貫性：動きやタイミング、表情やニュアンスの統一感',
+   '高負荷時の安定感：難しい技での持続力、ミスからの立て直し',
+   '伝達力 / 表現力：確かな技術を土台とした演技の表現力']},
+ MA:{upLabel:'COMPOSITION',up:[
+   '多様性 / 変化：メロディーやリズムの種類と変化、多様さ',
+   '構成 / 配置：楽器の役割や音の重ね方、曲の流れの工夫',
+   '表現の幅：強弱やフレーズの工夫、動きとの結びつき',
+   '挑戦 / 難易度：曲に合った難しい奏法や演奏への挑戦'],
+  lo:[
+   '正確性 / 基本技術：音程や発音、リズムの正確さ',
+   '調和 / 一貫性：響きや音量のバランス、曲の表情の統一感',
+   '高負荷時の安定感：動きや難しさが加わる場面での演奏の安定感',
+   '伝達力 / 表現力：確かな演奏技術を土台とした音楽の表現力']},
+ PB:{upLabel:'SUBSTANCE',up:[
+   '多様性 / 変化：リズムや音色、奏法の幅と深み',
+   '構成 / 配置：パートの役割分担、リズムや音の重ね方の工夫',
+   '表現の幅：強弱やフレーズの工夫、演奏と動きの結びつき',
+   '挑戦 / 難易度：難しいリズムや奏法と歩行・動きの両立への挑戦'],
+  lo:[
+   '正確性 / 基本技術：リズムや音の出だしの明確さ、揃い方',
+   '調和 / 一貫性：音量や音色のまとまり、フレーズや周囲との調和',
+   '高負荷時の安定感：歩行・動きや難しい場面での個人・パートの精度',
+   '伝達力 / 表現力：確かな演奏技術を土台とした音楽と動きの表現力']},
+ PP:{upLabel:'SUBSTANCE',up:[
+   '多様性 / 変化：鍵盤・打楽器の種類、音色や奏法の幅と深み',
+   '構成 / 配置：楽器の役割分担、音色の組み合わせや重ね方の工夫',
+   '表現の幅：強弱や響きの工夫、多様な音色による音楽表現',
+   '挑戦 / 難易度：難しい奏法や複数の役割を担う演奏への挑戦'],
+  lo:[
+   '正確性 / 基本技術：リズムや音の出だし、各楽器の奏法の正確さ',
+   '調和 / 一貫性：楽器間の音量・音色のバランス、周囲との調和',
+   '高負荷時の安定感：難しい奏法や役割の切替時の個人・パートの精度',
+   '伝達力 / 表現力：確かな演奏技術を土台とした多様な音色の表現力']}
+};
+function rubricKeyFor(cap){
+  if(!cap)return 'MA';
+  const n=(cap.name||'');
+  if(/General Effect/i.test(n)||cap.family==='GE')return 'GE';
+  if(/Color\s*Guard/i.test(n)||cap.isCG)return 'CG';
+  if(/Perc.*Pit|Pit/i.test(n))return 'PP';
+  if(/Perc.*Battery|Battery/i.test(n))return 'PB';
+  if(/Visual/i.test(n)||cap.family==='Visual')return 'VA';
+  if(/Music/i.test(n)||cap.family==='Music')return 'MA';
+  return 'MA';
+}
+function scoreLocked(){return state.decided||state.finalConfirmed;}
 
 const judgeOf=id=>JUDGES.find(j=>j.id===id);
 const capOf=j=>CAPTIONS.find(c=>c.id===(j&&j.captionId));
@@ -265,7 +374,7 @@ async function boot(){
     CAPTIONS=cfg.captions;JUDGES=cfg.judges;BANDS=cfg.bands;EV=cfg.event||EV;
     DIVISIONS=cfg.divisions||[];CLASSES=cfg.classes||[];FAMILIES=cfg.families||{};PRIZE=cfg.prizeRules||[];
     state.curDiv=(DIVISIONS[0]||{}).id||null;
-    render();flush();pollShare();setInterval(pollShare,8000);
+    render();flush();pollShare();setInterval(pollShare,8000);setInterval(pollStatus,6000);
   }catch(e){app.innerHTML='<div style="padding:60px 24px;text-align:center;color:#e8705a;line-height:1.8">設定を読み込めませんでした。<br>ネット接続を確認して再読み込みしてください。</div>';}
 }
 async function pollShare(){
@@ -274,8 +383,32 @@ async function pollShare(){
     else state.shareState=ns;}catch(e){}
   if(state.shareState==='shared'){try{state.allScores=(await (await fetch(allScoresURL)).json())||{};if(state.tab==='ranking'&&state.rankMode==='final')render();}catch(e){}}
 }
-async function loadStatus(){try{const s=await (await fetch(statusURL(state.judgeId))).json();state.decided=!!(s&&s.decided);state.finalConfirmed=!!(s&&s.finalConfirmed);}catch(e){state.decided=false;state.finalConfirmed=false;}}
-function putStatus(){fetch(statusURL(state.judgeId),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({decided:state.decided,finalConfirmed:state.finalConfirmed,at:Date.now()})}).catch(()=>{});}
+async function loadStatus(){try{const s=await (await fetch(statusURL(state.judgeId))).json();state.decided=!!(s&&s.decided);state.finalConfirmed=!!(s&&s.finalConfirmed);state.editRequest=!!(s&&s.editRequest);}catch(e){state.decided=false;state.finalConfirmed=false;state.editRequest=false;}}
+function putStatus(){lastStatusWrite=Date.now();fetch(statusURL(state.judgeId),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({decided:state.decided,finalConfirmed:state.finalConfirmed,editRequest:state.editRequest,at:Date.now()})}).catch(()=>{});}
+/* 運営側のロック解除をリアルタイムで反映する */
+async function pollStatus(){
+  if(!state.judgeId)return;
+  if(Date.now()-lastStatusWrite<4000)return;            // 自分の書き込み直後は上書きしない
+  try{const s=await (await fetch(statusURL(state.judgeId))).json();
+    const nd=!!(s&&s.decided),nf=!!(s&&s.finalConfirmed),ne=!!(s&&s.editRequest);
+    if(nd!==state.decided||nf!==state.finalConfirmed||ne!==state.editRequest){
+      const wasLocked=scoreLocked();
+      state.decided=nd;state.finalConfirmed=nf;state.editRequest=ne;
+      render();
+      if(wasLocked&&!scoreLocked())toast('運営がロックを解除しました。修正できます。');
+    }
+  }catch(e){}
+}
+let _toastT=null;
+function toast(msg){let el=document.getElementById('mmtoast');if(!el){el=document.createElement('div');el.id='mmtoast';el.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99999;background:var(--gold);color:#fff;font:600 13px var(--body);padding:11px 18px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.4);max-width:90%;text-align:center;';document.body.appendChild(el);}el.textContent=msg;el.style.opacity='1';clearTimeout(_toastT);_toastT=setTimeout(()=>{el.style.transition='opacity .4s';el.style.opacity='0';},3200);}
+function requestEdit(){state.editRequest=true;putStatus();render();toast('運営に修正をリクエストしました。');}
+function cancelEditRequest(){state.editRequest=false;putStatus();render();}
+function lockBarHTML(){
+  return state.editRequest
+   ? `<div class="lockrow"><div class="lockmsg">⏳ 修正リクエスト中 — 運営がロックを解除するとスコアを修正できます</div><button class="reqbtn cancel" id="req-cancel">リクエストを取消</button></div>`
+   : `<div class="lockrow"><div class="lockmsg">決定・最終確認の後はスコアを変更できません。修正が必要な場合は運営に解除をリクエストしてください。</div><button class="reqbtn" id="req-edit">修正をリクエスト</button></div>`;
+}
+function wireLockBar(root){root=root||document;const e=root.querySelector('#req-edit');if(e)e.addEventListener('click',requestEdit);const c=root.querySelector('#req-cancel');if(c)c.addEventListener('click',cancelEditRequest);}
 
 /* ===================== render ===================== */
 function render(){state.judgeId?renderMain():renderSelect();}
@@ -309,12 +442,15 @@ function renderMain(){
       <button class="tab ${state.tab==='ranking'?'active':''}" data-tab="ranking">ランキング</button>
     </div>
     <div class="body" id="body"></div>
-    ${state.tab==='input'?`<div class="decide"><button class="decidebtn ${state.decided?'done':''}" id="decide">${state.decided?'✓ 決定済み（タップで取消）':'全て入力・確認したら決定'}</button><div class="decidenote">決定すると管理画面に反映されます</div></div>`:''}`;
+    ${state.tab==='input'?`<div class="decide">${scoreLocked()
+        ? `<div class="lockstatus">${state.decided?'✓ 決定済み':''}${state.finalConfirmed?(state.decided?' ・ ':'')+'✓ 最終確認済み':''}（ロック中）</div>${lockBarHTML()}`
+        : `<button class="decidebtn" id="decide">全て入力・確認したら決定</button><div class="decidenote">決定するとスコアがロックされ、管理画面に反映されます</div>`}</div>`:''}`;
   // wire top/tabs
   app.querySelector('#switch').addEventListener('click',()=>{state.judgeId=null;render();});
   app.querySelectorAll('.divtab').forEach(b=>b.addEventListener('click',()=>{state.curDiv=b.dataset.dv;state.bandIndex=0;state.buf='';render();}));
   app.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{state.tab=b.dataset.tab;state.buf='';render();if(state.tab==='ranking')pollShare();}));
   const dec=app.querySelector('#decide');if(dec)dec.addEventListener('click',toggleDecide);
+  wireLockBar(app);
   updateSync();
   if(state.tab==='criteria')renderCriteria();
   else if(state.tab==='ranking')renderRanking();
@@ -322,13 +458,25 @@ function renderMain(){
 }
 
 function renderCriteria(){
-  const cap=capOf(judgeOf(state.judgeId));const fields=cap?cap.fields:[];
+  const cap=capOf(judgeOf(state.judgeId));const fields=cap?cap.fields:['①','②'];
+  const rk=rubricKeyFor(cap);const C=CRITERIA[rk]||CRITERIA.MA;
+  const acc=(key,sym,field,title,enLabel,items,open)=>`
+    <div class="acc ${open?'open':''}" data-acc="${key}">
+      <div class="acc-head"><span class="acc-badge">${sym}</span>
+        <span class="acc-tt"><span class="t1">${title}</span><span class="t2">${field} ／ ${enLabel}</span></span>
+        <span class="acc-cv">▼</span></div>
+      <div class="acc-body">
+        ${items.map((t,i)=>{const p=t.split('：');return `<div class="ci"><span class="num">${String(i+1).padStart(2,'0')}</span><span class="tx"><b>${p[0]}</b>${p.length>1?'：'+p.slice(1).join('：'):''}</span></div>`;}).join('')}
+      </div></div>`;
   document.getElementById('body').innerHTML=`<div class="crit">
     <div class="band">${cap?cap.name:''} の審査項目</div>
-    ${fields.map((f,i)=>`<div class="item"><h3>${i===0?'①':'②'} ${f} <span style="color:var(--muted);font-weight:400">/100</span></h3><p>${FIELD_DESC[f]||''}</p></div>`).join('')}
+    <div class="cap-sub">内容・達成度の各欄をタップすると、審査する4つの観点（01〜04）が開きます。</div>
+    ${acc('u','①',fields[0]||'①','内容',C.upLabel,C.up,state.critOpen.u)}
+    ${acc('l','②',fields[1]||'②','表現・達成度','ACHIEVEMENT / PERFORMANCE',C.lo,state.critOpen.l)}
     <p class="note"><code>Total = (① + ②) ÷ 10</code>（20点満点）<br>各団体に①②を0〜100で入力します。合計・順位は自動計算されます。</p>
     ${isCGJudge()?'<p class="note">カラーガード「無」の団体は入力不要です（自動でロックされます）。</p>':''}
   </div>`;
+  document.querySelectorAll('.acc-head').forEach(h=>h.addEventListener('click',()=>{const k=h.parentElement.dataset.acc;state.critOpen[k==='u'?'u':'l']=!state.critOpen[k==='u'?'u':'l'];h.parentElement.classList.toggle('open');}));
 }
 
 function renderInput(){
@@ -349,25 +497,30 @@ function renderInput(){
   }
   const ttl=ttlOf(judge.id,band.id);const st=computeStandings(judge.id);const me=st.find(r=>r.band.id===band.id);
   const cmt=(state.comments[judge.id]&&state.comments[judge.id][band.id])||'';
-  body.innerHTML=`<div class="inp">
-    ${bar}
-    <div class="fields">
-      ${fields.map((f,i)=>{const v=e[f];const has=(v!=null&&v!=='');return `<div class="fbox ${state.active===i?'active':''}" data-f="${i}">
-        <div class="fl">${i===0?'①':'②'} ${f}</div><div class="fv ${has?'':'empty'}">${has?v:'––'}</div></div>`;}).join('')}
-    </div>
-    <div class="ttlbar"><span class="lab">Total</span><span class="val">${ttl!=null?ttl.toFixed(2):'––.––'}</span>${me&&me.rank?`<span class="rk">${me.rank}位</span>`:''}</div>
-    <div class="cmt"><input id="cmt" placeholder="コメント（任意）" value="${String(cmt).replace(/"/g,'&quot;')}"></div>
-    <div class="keypad">
+  const slk=scoreLocked();
+  const bottom=slk
+   ? `<div class="lockpanel"><div class="lk">🔒</div><div class="big">スコアはロック中です</div><div class="sm">${state.decided?'「決定」':''}${state.finalConfirmed?'「最終確認」':''}済みのため、点数は変更できません。<br>修正したい場合は、下部の「修正をリクエスト」から運営に解除を依頼してください。</div></div>`
+   : `<div class="keypad">
       ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" data-k="${n}">${n}</button>`).join('')}
       <button class="key util" data-k="back">⌫</button>
       <button class="key" data-k="0">0</button>
       <button class="key util" data-k="clear">C</button>
+    </div>`;
+  body.innerHTML=`<div class="inp">
+    ${bar}
+    <div class="fields">
+      ${fields.map((f,i)=>{const v=e[f];const has=(v!=null&&v!=='');return `<div class="fbox ${(!slk&&state.active===i)?'active':''} ${slk?'ro':''}" data-f="${i}">
+        <div class="fl">${i===0?'①':'②'} ${f}</div><div class="fv ${has?'':'empty'}">${has?v:'––'}</div></div>`;}).join('')}
     </div>
+    <div class="ttlbar"><span class="lab">Total</span><span class="val">${ttl!=null?ttl.toFixed(2):'––.––'}</span>${me&&me.rank?`<span class="rk">${me.rank}位</span>`:''}</div>
+    <div class="cmt"><input id="cmt" placeholder="コメント（任意）" value="${String(cmt).replace(/"/g,'&quot;')}" ${slk?'disabled':''}></div>
+    ${bottom}
   </div>`;
-  // wire fields
-  body.querySelectorAll('.fbox').forEach(fb=>fb.addEventListener('click',()=>{state.active=+fb.dataset.f;state.buf=String(e[fields[state.active]]??'');render();}));
-  body.querySelectorAll('.key').forEach(k=>k.addEventListener('click',()=>onKey(k.dataset.k)));
-  const ci=document.getElementById('cmt');ci.addEventListener('input',()=>onComment(ci.value));
+  if(!slk){
+    body.querySelectorAll('.fbox').forEach(fb=>fb.addEventListener('click',()=>{state.active=+fb.dataset.f;state.buf=String(e[fields[state.active]]??'');render();}));
+    body.querySelectorAll('.key').forEach(k=>k.addEventListener('click',()=>onKey(k.dataset.k)));
+    const ci=document.getElementById('cmt');ci.addEventListener('input',()=>onComment(ci.value));
+  }
   wireNav(bands);
 }
 function wireNav(bands){
@@ -376,6 +529,7 @@ function wireNav(bands){
   if(n)n.addEventListener('click',()=>{state.bandIndex=(state.bandIndex+1)%bands.length;state.active=0;state.buf='';render();});
 }
 function onKey(k){
+  if(scoreLocked())return;
   const judge=judgeOf(state.judgeId),cap=capOf(judge),band=curBands()[state.bandIndex];
   const field=cap.fields[state.active];
   let buf=state.buf||'';
@@ -399,6 +553,7 @@ function refreshInputValues(){
   const st=computeStandings(judge.id);const me=st.find(r=>r.band.id===band.id);const rk=document.querySelector('.ttlbar .rk');if(rk)rk.textContent=me&&me.rank?me.rank+'位':'';
 }
 function onComment(v){
+  if(scoreLocked())return;
   const judge=judgeOf(state.judgeId),band=curBands()[state.bandIndex];
   state.comments[judge.id]=state.comments[judge.id]||{};
   if(v.trim()==='')delete state.comments[judge.id][band.id];else state.comments[judge.id][band.id]=v;
@@ -409,18 +564,17 @@ function autoUndecide(){ let ch=false;
   if(state.finalConfirmed){state.finalConfirmed=false;ch=true;}
   if(ch)putStatus(); }
 function toggleDecide(){
-  if(!state.decided){
-    const ub=firstUnentered();
-    if(ub){
-      alert('未入力の団体があります：\nNO.'+String(ub.no).padStart(2,'0')+'　'+ub.name+'\n\nこの団体の入力画面へ移動します。');
-      if(ub.division)state.curDiv=ub.division;
-      const idx=curBands().findIndex(b=>b.id===ub.id);
-      state.bandIndex=idx>=0?idx:0;state.tab='input';state.active=0;state.buf='';render();
-      return;
-    }
+  if(state.decided)return;                       // 決定は一方向（取消は運営のロック解除のみ）
+  const ub=firstUnentered();
+  if(ub){
+    alert('未入力の団体があります：\nNO.'+String(ub.no).padStart(2,'0')+'　'+ub.name+'\n\nこの団体の入力画面へ移動します。');
+    if(ub.division)state.curDiv=ub.division;
+    const idx=curBands().findIndex(b=>b.id===ub.id);
+    state.bandIndex=idx>=0?idx:0;state.tab='input';state.active=0;state.buf='';render();
+    return;
   }
-  state.decided=!state.decided;putStatus();
-  const d=document.getElementById('decide');if(d){d.className='decidebtn'+(state.decided?' done':'');d.textContent=state.decided?'✓ 決定済み（タップで取消）':'全て入力・確認したら決定';}}
+  if(!confirm('スコアを決定します。\n決定後は点数を変更できません（修正は運営にリクエストが必要です）。\n\nよろしいですか？'))return;
+  state.decided=true;state.editRequest=false;putStatus();render();}
 
 function renderRanking(){
   const judge=judgeOf(state.judgeId);const shared=state.shareState==='shared';
@@ -444,19 +598,19 @@ function renderRanking(){
         <span class="st-chev">${open?'▲ ジャッジ別を閉じる':'▼ ジャッジ別スコア'}</span></div>`;
         if(open)h+=breakdownHTML(r.band);return h;}).join('')}
       <p class="rinfo">全ジャッジ集計後の最終順位（${divName(state.curDiv)}）。行をタップすると各ジャッジのスコア・順位が見られます。</p>
-      <div class="fconfirm" id="fcwrap">
-        <button class="fcbtn ${fc?'done':''}" id="fcbtn">${fc?'✓ 最終確認済み（タップで取消）':'最終確認（この内容で確定）'}</button>
-        <div class="fcnote">${fc?'運営に「最終スコア決定」として送信済みです。':'全ジャッジのスコアを確認し、問題なければ最終確認してください。運営側で最終スコア決定として扱われます。'}</div>
-      </div></div>`;
+      ${fc
+        ? `<div class="fconfirm"><div class="lockstatus">✓ 最終確認済み（ロック中）</div><div class="fcnote">運営に「最終スコア決定」として送信済みです。</div>${lockBarHTML()}</div>`
+        : `<div class="fconfirm" id="fcwrap"><button class="fcbtn" id="fcbtn">最終確認（この内容で確定）</button><div class="fcnote">全ジャッジのスコアを確認し、問題なければ最終確認してください。確定後はスコアがロックされます。</div>${scoreLocked()?lockBarHTML():''}</div>`}
+      </div>`;
     body.querySelectorAll('.st-row.exp').forEach(row=>row.addEventListener('click',()=>{const bid=row.dataset.bid;state.expBand=(state.expBand===bid)?null:bid;render();}));
+    wireLockBar(body);
     const fcb=body.querySelector('#fcbtn');
     if(fcb)fcb.addEventListener('click',()=>{
-      if(state.finalConfirmed){state.finalConfirmed=false;putStatus();render();return;}
       const w=body.querySelector('#fcwrap');
-      w.innerHTML=`<div class="fcnote" style="margin-bottom:10px">この順位・スコアを最終として確定します。よろしいですか？</div>
+      w.innerHTML=`<div class="fcnote" style="margin-bottom:10px">この順位・スコアを最終として確定します。確定後はスコアがロックされます。よろしいですか？</div>
         <div style="display:flex;gap:8px"><button class="fcbtn" id="fcyes">確定する</button>
         <button class="fcbtn" id="fcno" style="background:transparent;color:var(--muted);border-color:var(--line)">キャンセル</button></div>`;
-      w.querySelector('#fcyes').addEventListener('click',()=>{state.finalConfirmed=true;putStatus();render();});
+      w.querySelector('#fcyes').addEventListener('click',()=>{state.finalConfirmed=true;state.editRequest=false;putStatus();render();});
       w.querySelector('#fcno').addEventListener('click',()=>render());
     });
   }else{
