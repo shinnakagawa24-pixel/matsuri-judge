@@ -55,6 +55,25 @@
   .jb .c{font-size:11px;color:var(--muted);margin-top:2px;}
   .jb .chev{color:var(--gold);font-size:20px;}
 
+  /* PIN screen */
+  .pin{display:flex;flex-direction:column;height:100%;padding:24px 22px 26px;}
+  .pin .back{align-self:flex-start;background:transparent;border:1px solid var(--line);color:var(--muted);font-size:12px;border-radius:8px;padding:7px 12px;cursor:pointer;font-family:var(--body);}
+  .pin .phead{text-align:center;margin:18px 0 4px;}
+  .pin .pn{font-family:var(--display);font-weight:600;font-size:22px;}
+  .pin .pc{font-size:12px;color:var(--muted);margin-top:3px;}
+  .pin .ptip{text-align:center;font-size:12px;color:var(--muted);margin:14px 0 10px;}
+  .pindots{display:flex;gap:14px;justify-content:center;margin:6px 0 4px;}
+  .pindot{width:15px;height:15px;border-radius:50%;border:2px solid var(--line);}
+  .pindot.on{background:var(--gold);border-color:var(--gold);}
+  .pinerr{text-align:center;color:var(--danger);font-size:12.5px;font-weight:600;height:18px;margin-top:8px;}
+  .pin .shake{animation:shk .3s;}
+  @keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+  .pinpad{flex:0 0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:300px;margin:18px auto 0;width:100%;}
+  .pinkey{height:58px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:12px;font-family:var(--mono);font-weight:700;font-size:24px;cursor:pointer;user-select:none;}
+  .pinkey:active{background:var(--panel-2);border-color:var(--gold-dim);}
+  .pinkey.util{font-family:var(--display);font-size:16px;color:var(--muted);}
+  .pinkey.blank{border:0;background:transparent;cursor:default;}
+
   /* criteria tab */
   .crit{padding:18px 18px 40px;}
   .crit .band{font-family:var(--display);font-weight:600;font-size:18px;margin-bottom:12px;}
@@ -81,6 +100,13 @@
   .fbox .fv{font-family:var(--mono);font-weight:700;font-size:30px;line-height:1.05;}
   .fbox.active .fv{color:var(--gold);}
   .fbox .fv.empty{color:var(--line);}
+  .fbox .boxtag{margin-top:3px;display:inline-block;font-family:var(--display);font-weight:700;font-size:10px;letter-spacing:.03em;padding:1px 9px;border-radius:5px;color:#fff;line-height:1.5;}
+  .boxtag.b1{background:rgba(188,0,45,.22);color:#edc2cb;}
+  .boxtag.b2{background:rgba(188,0,45,.40);}
+  .boxtag.b3{background:rgba(188,0,45,.58);}
+  .boxtag.b4{background:rgba(188,0,45,.80);}
+  .boxtag.b5{background:#BC002D;box-shadow:0 0 0 1px rgba(255,120,150,.5);}
+  .boxtag.empty{background:transparent;color:var(--line);font-weight:600;}
   .ttlbar{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:9px;padding:3px 14px;}
   .ttlbar .lab{font-family:var(--display);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
   .ttlbar .val{font-family:var(--mono);font-weight:700;font-size:17px;color:var(--signal);}
@@ -214,7 +240,8 @@ let EV={name:'Marching Matsuri',date:''};
 let CAPTIONS=[],JUDGES=[],BANDS=[],DIVISIONS=[],CLASSES=[],FAMILIES={},PRIZE=[];
 const state={judgeId:null,curDiv:null,tab:'input',bandIndex:0,active:0,buf:'',
   scores:lsGet(LS.scores,{}),comments:lsGet(LS.comments,{}),decided:false,finalConfirmed:false,editRequest:false,
-  shareState:'none',allScores:{},rankMode:'self',expBand:null,critOpen:{u:false,l:false}};
+  shareState:'none',allScores:{},rankMode:'self',expBand:null,critOpen:{u:false,l:false},
+  pendingJudge:null,pinBuf:'',pinErr:false};
 let lastStatusWrite=0;
 const FIELD_DESC={Rep:'Repertoire Effect / 構成の効果',Pfm:'Performers Effect / 奏者の表現',
   Cont:'Content / 内容',Achv:'Achievement / 達成度',Sbst:'Substance / 内容の充実'};
@@ -294,6 +321,9 @@ function rubricKeyFor(cap){
   return 'MA';
 }
 function scoreLocked(){return state.decided||state.finalConfirmed;}
+/* BOXシステム: 0-29=1, 30-49=2, 50-69=3, 70-89=4, 90-100=5（BOX5が最高）*/
+function boxOf(v){if(v==null||v==='')return null;v=Number(v);if(isNaN(v))return null;return v<30?1:v<50?2:v<70?3:v<90?4:5;}
+const BOX_RANGE={1:'0–29',2:'30–49',3:'50–69',4:'70–89',5:'90–100'};
 
 const judgeOf=id=>JUDGES.find(j=>j.id===id);
 const capOf=j=>CAPTIONS.find(c=>c.id===(j&&j.captionId));
@@ -411,7 +441,7 @@ function lockBarHTML(){
 function wireLockBar(root){root=root||document;const e=root.querySelector('#req-edit');if(e)e.addEventListener('click',requestEdit);const c=root.querySelector('#req-cancel');if(c)c.addEventListener('click',cancelEditRequest);}
 
 /* ===================== render ===================== */
-function render(){state.judgeId?renderMain():renderSelect();}
+function render(){if(state.judgeId)renderMain();else if(state.pendingJudge)renderPin();else renderSelect();}
 
 function renderSelect(){
   const FAM={GE:'General Effect',Visual:'Visual',Music:'Music'};const groups={GE:[],Visual:[],Music:[]};
@@ -422,7 +452,43 @@ function renderSelect(){
     ${Object.keys(groups).map(f=>groups[f].length?`<div class="famlabel">${FAM[f]}</div>`+groups[f].map(j=>{const c=capOf(j);
       return `<button class="jb" data-j="${j.id}"><span><span class="n">${j.name}</span><span class="c">${c?c.name:''}</span></span><span class="chev">›</span></button>`;}).join(''):'').join('')}
   </div></div>`;
-  app.querySelectorAll('.jb').forEach(b=>b.addEventListener('click',async()=>{state.judgeId=b.dataset.j;state.bandIndex=0;state.tab='input';await loadStatus();render();}));
+  app.querySelectorAll('.jb').forEach(b=>b.addEventListener('click',async()=>{
+    const j=judgeOf(b.dataset.j);
+    if(j&&/^\d{4}$/.test(String(j.pin||''))){state.pendingJudge=j.id;state.pinBuf='';state.pinErr=false;render();return;}
+    await enterJudge(b.dataset.j);
+  }));
+}
+async function enterJudge(jid){state.judgeId=jid;state.pendingJudge=null;state.pinBuf='';state.bandIndex=0;state.tab='input';await loadStatus();render();}
+function renderPin(){
+  const j=judgeOf(state.pendingJudge);if(!j){state.pendingJudge=null;return render();}
+  const cap=capOf(j);const n=state.pinBuf.length;
+  app.innerHTML=`<div class="body"><div class="pin" id="pinroot">
+    <button class="back" id="pinback">‹ ジャッジ選択へ戻る</button>
+    <div class="phead"><div class="pn">${j.name}</div><div class="pc">${cap?cap.name:''}</div></div>
+    <div class="ptip">本人確認のため、4桁のPINを入力してください</div>
+    <div class="pindots">${[0,1,2,3].map(i=>`<div class="pindot ${i<n?'on':''}"></div>`).join('')}</div>
+    <div class="pinerr">${state.pinErr?'PINが違います。もう一度入力してください。':''}</div>
+    <div class="pinpad">
+      ${[1,2,3,4,5,6,7,8,9].map(d=>`<button class="pinkey" data-pk="${d}">${d}</button>`).join('')}
+      <button class="pinkey blank"></button>
+      <button class="pinkey" data-pk="0">0</button>
+      <button class="pinkey util" data-pk="back">⌫</button>
+    </div>
+  </div></div>`;
+  app.querySelector('#pinback').addEventListener('click',()=>{state.pendingJudge=null;state.pinBuf='';state.pinErr=false;render();});
+  app.querySelectorAll('.pinkey[data-pk]').forEach(k=>k.addEventListener('click',()=>onPin(k.dataset.pk)));
+}
+function onPin(k){
+  const j=judgeOf(state.pendingJudge);if(!j)return;
+  if(k==='back'){state.pinBuf=state.pinBuf.slice(0,-1);state.pinErr=false;render();return;}
+  if(state.pinBuf.length>=4)return;
+  state.pinBuf+=k;state.pinErr=false;
+  if(state.pinBuf.length===4){
+    if(state.pinBuf===String(j.pin)){enterJudge(j.id);}
+    else{state.pinErr=true;state.pinBuf='';render();const r=document.getElementById('pinroot');if(r){r.classList.add('shake');setTimeout(()=>r.classList.remove('shake'),320);}}
+    return;
+  }
+  render();
 }
 
 function renderMain(){
@@ -509,8 +575,8 @@ function renderInput(){
   body.innerHTML=`<div class="inp">
     ${bar}
     <div class="fields">
-      ${fields.map((f,i)=>{const v=e[f];const has=(v!=null&&v!=='');return `<div class="fbox ${(!slk&&state.active===i)?'active':''} ${slk?'ro':''}" data-f="${i}">
-        <div class="fl">${i===0?'①':'②'} ${f}</div><div class="fv ${has?'':'empty'}">${has?v:'––'}</div></div>`;}).join('')}
+      ${fields.map((f,i)=>{const v=e[f];const has=(v!=null&&v!=='');const bx=boxOf(v);return `<div class="fbox ${(!slk&&state.active===i)?'active':''} ${slk?'ro':''}" data-f="${i}">
+        <div class="fl">${i===0?'①':'②'} ${f}</div><div class="fv ${has?'':'empty'}">${has?v:'––'}</div><div class="boxtag ${bx?'b'+bx:'empty'}">${bx?('BOX'+bx):'–'}</div></div>`;}).join('')}
     </div>
     <div class="ttlbar"><span class="lab">Total</span><span class="val">${ttl!=null?ttl.toFixed(2):'––.––'}</span>${me&&me.rank?`<span class="rk">${me.rank}位</span>`:''}</div>
     <div class="cmt"><input id="cmt" placeholder="コメント（任意）" value="${String(cmt).replace(/"/g,'&quot;')}" ${slk?'disabled':''}></div>
@@ -548,7 +614,7 @@ function onKey(k){
 function refreshInputValues(){
   const judge=judgeOf(state.judgeId),cap=capOf(judge),band=curBands()[state.bandIndex];const e=entry(judge.id,band.id);
   const boxes=document.querySelectorAll('.fbox');
-  cap.fields.forEach((f,i)=>{if(boxes[i]){const v=e[f];const has=(v!=null&&v!=='');const fv=boxes[i].querySelector('.fv');fv.textContent=has?v:'––';fv.classList.toggle('empty',!has);boxes[i].classList.toggle('active',state.active===i);}});
+  cap.fields.forEach((f,i)=>{if(boxes[i]){const v=e[f];const has=(v!=null&&v!=='');const fv=boxes[i].querySelector('.fv');fv.textContent=has?v:'––';fv.classList.toggle('empty',!has);boxes[i].classList.toggle('active',state.active===i);const bx=boxOf(v);const bt=boxes[i].querySelector('.boxtag');if(bt){bt.className='boxtag '+(bx?'b'+bx:'empty');bt.textContent=bx?('BOX'+bx):'–';}}});
   const ttl=ttlOf(judge.id,band.id);const tv=document.querySelector('.ttlbar .val');if(tv)tv.textContent=ttl!=null?ttl.toFixed(2):'––.––';
   const st=computeStandings(judge.id);const me=st.find(r=>r.band.id===band.id);const rk=document.querySelector('.ttlbar .rk');if(rk)rk.textContent=me&&me.rank?me.rank+'位':'';
 }
