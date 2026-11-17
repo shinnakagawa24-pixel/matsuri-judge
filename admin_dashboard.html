@@ -980,21 +980,36 @@ async function saveManual(){
   }catch(e){ btn.textContent='✗ 通信エラー'; }
   setTimeout(()=>{const b=wrap.querySelector('#msave');if(b)b.textContent='保存';},1600);
 }
+function applyCfg(cfg){
+  EVENT=cfg.event||EVENT; CAPTIONS=cfg.captions; JUDGES=cfg.judges; BANDS=cfg.bands;
+  if(cfg.families){['GE','Visual','Music'].forEach(f=>{if(cfg.families[f]&&cfg.families[f].factor!=null)FACTOR[f]=Number(cfg.families[f].factor);});}
+  DIVISIONS=(cfg.divisions&&cfg.divisions.length)?cfg.divisions:[{id:'mb',name:'MB部門'}];
+  CLASSES=cfg.classes||[]; AWARD_GROUPS=cfg.awardGroups||{};
+  PRIZE_BY_CLASS={}; (cfg.prizeRules||[]).forEach(r=>{if(r.classId)PRIZE_BY_CLASS[r.classId]={gold:r.gold,silver:r.silver,bronze:r.bronze};});
+  if(!DIVISIONS.some(d=>d.id===curDiv))curDiv=(DIVISIONS[0]||{}).id||null;
+  const prev=Object.assign({},admin);                        // ペナルティ等の運営入力は保持
+  Object.keys(admin).forEach(k=>delete admin[k]);
+  BANDS.forEach(b=>admin[b.id]={hasCG:b.hasCG,pen:(prev[b.id]?prev[b.id].pen:0)});
+}
+function cfgHashA(c){try{return JSON.stringify({e:c.event,c:c.captions,j:c.judges,b:c.bands,d:c.divisions,cl:c.classes,f:c.families,p:c.prizeRules,a:c.awardGroups});}catch(_){return'';}}
+let lastCfgHashA='';
+async function pollConfig(){   // 設定のライブ反映（稼働中に団体・出演順・名称変更を自動反映）
+  try{const res=await fetch(cfgURL,{cache:'no-store'});if(!res.ok)return;const cfg=await res.json();if(!cfg||!cfg.captions)return;
+    const h=cfgHashA(cfg);if(h===lastCfgHashA)return;
+    const ae=document.activeElement;if(ae&&ae.closest&&(ae.closest('.mawards')||ae.closest('.detail')||ae.closest('.matrix-wrap')))return; // 編集中は次回に回す
+    lastCfgHashA=h;applyCfg(cfg);render();
+  }catch(e){}
+}
 async function boot(){
   wrap.innerHTML='<div style="padding:64px 22px;text-align:center;color:#9a929b;font-family:var(--body)">設定を読み込み中…</div>';
   try{
-    const res=await fetch(cfgURL); if(!res.ok)throw new Error('HTTP '+res.status);
+    const res=await fetch(cfgURL,{cache:'no-store'}); if(!res.ok)throw new Error('HTTP '+res.status);
     const cfg=await res.json(); if(!cfg||!cfg.captions)throw new Error('config empty');
-    EVENT=cfg.event||EVENT; CAPTIONS=cfg.captions; JUDGES=cfg.judges; BANDS=cfg.bands;
-    if(cfg.families){['GE','Visual','Music'].forEach(f=>{if(cfg.families[f]&&cfg.families[f].factor!=null)FACTOR[f]=Number(cfg.families[f].factor);});}
-    DIVISIONS=(cfg.divisions&&cfg.divisions.length)?cfg.divisions:[{id:'mb',name:'MB部門'}];
-    CLASSES=cfg.classes||[]; AWARD_GROUPS=cfg.awardGroups||{};
-    PRIZE_BY_CLASS={}; (cfg.prizeRules||[]).forEach(r=>{if(r.classId)PRIZE_BY_CLASS[r.classId]={gold:r.gold,silver:r.silver,bronze:r.bronze};});
-    curDiv=(DIVISIONS[0]||{}).id||null;
-    Object.keys(admin).forEach(k=>delete admin[k]); BANDS.forEach(b=>admin[b.id]={hasCG:b.hasCG,pen:0});
+    applyCfg(cfg); lastCfgHashA=cfgHashA(cfg);
     try{const ma=await (await fetch(manualURL)).json();MANUAL_AWARDS=Array.isArray(ma)?ma:[];}catch(e){MANUAL_AWARDS=[];}
     await fetchScores();
     setInterval(fetchScores,5000);
+    setInterval(pollConfig,20000);
   }catch(e){
     wrap.innerHTML='<div style="padding:52px 24px;text-align:center;color:#f5a623;font-family:var(--body);line-height:1.8">設定を読み込めませんでした。<br>setup.html で設定をアップロード済みか、ネット接続を確認してください。<br><small style="color:#9a929b">'+(e.message||e)+'</small></div>';
   }

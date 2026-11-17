@@ -231,6 +231,8 @@ const commentURL=(j,b)=>`${BASE}/events/${CONFIG.EVENT_ID}/comments/${j}/${b}.js
 const statusURL=(j)=>`${BASE}/events/${CONFIG.EVENT_ID}/judgeStatus/${j}.json`;
 const shareURL=`${BASE}/events/${CONFIG.EVENT_ID}/share.json`;
 const allScoresURL=`${BASE}/events/${CONFIG.EVENT_ID}/scores.json`;
+const scoresOfURL=(j)=>`${BASE}/events/${CONFIG.EVENT_ID}/scores/${j}.json`;
+const commentsOfURL=(j)=>`${BASE}/events/${CONFIG.EVENT_ID}/comments/${j}.json`;
 const LS={cfg:'mmj_cfg_'+CONFIG.EVENT_ID,queue:'mmj_q_'+CONFIG.EVENT_ID,scores:'mmj_s_'+CONFIG.EVENT_ID,comments:'mmj_c_'+CONFIG.EVENT_ID};
 function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
@@ -396,7 +398,40 @@ function firstUnentered(){const jid=state.judgeId;const cg=isCGJudge();for(const
 
 /* ===================== boot ===================== */
 const app=document.getElementById('app');
-async function loadConfig(){try{const res=await fetch(cfgURL);if(!res.ok)throw 0;const c=await res.json();if(!c||!c.captions)throw 0;lsSet(LS.cfg,c);return c;}catch(e){const c=lsGet(LS.cfg,null);if(c)return c;throw new Error('設定を読み込めません');}}
+async function loadConfig(){try{const res=await fetch(cfgURL,{cache:'no-store'});if(!res.ok)throw 0;const c=await res.json();if(!c||!c.captions)throw 0;lsSet(LS.cfg,c);return c;}catch(e){const c=lsGet(LS.cfg,null);if(c)return c;throw new Error('設定を読み込めません');}}
+/* 大会設定のライブ反映（出演順・団体追加/削除・名称変更などを稼働中に自動反映）*/
+function cfgHash(c){try{return JSON.stringify({e:c.event,c:c.captions,j:c.judges,b:c.bands,d:c.divisions,cl:c.classes,f:c.families,p:c.prizeRules});}catch(_){return'';}}
+let lastCfgHash='';
+function applyConfig(c){
+  CAPTIONS=c.captions;JUDGES=c.judges;BANDS=c.bands;EV=c.event||EV;
+  DIVISIONS=c.divisions||[];CLASSES=c.classes||[];FAMILIES=c.families||{};PRIZE=c.prizeRules||[];
+  if(!DIVISIONS.some(d=>d.id===state.curDiv))state.curDiv=(DIVISIONS[0]||{}).id||null;
+  if(state.judgeId&&!JUDGES.some(j=>j.id===state.judgeId)){state.judgeId=null;state.pendingJudge=null;render();return;}
+  if(curBands().length===0){const d=DIVISIONS.find(dv=>BANDS.some(b=>b.division===dv.id));if(d)state.curDiv=d.id;}
+  const nb=curBands().length;if(state.bandIndex>=nb)state.bandIndex=Math.max(0,nb-1);
+  render();
+}
+async function pollConfig(){
+  try{const res=await fetch(cfgURL,{cache:'no-store'});if(!res.ok)return;const c=await res.json();if(!c||!c.captions)return;
+    const h=cfgHash(c);if(h===lastCfgHash)return;
+    const ae=document.activeElement;if(ae&&ae.tagName==='INPUT')return;   // コメント入力中などは次回に回す
+    lastCfgHash=h;lsSet(LS.cfg,c);applyConfig(c);toast('大会設定が更新されました');
+  }catch(e){}
+}
+/* ログイン時に自分のスコア・コメントをFirebaseから復元（別端末でも続きから入力できる）*/
+async function loadMyData(jid){
+  try{
+    const [sc,cm]=await Promise.all([
+      fetch(scoresOfURL(jid),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null),
+      fetch(commentsOfURL(jid),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null)
+    ]);
+    state.scores[jid]=state.scores[jid]||{};
+    if(sc&&typeof sc==='object')for(const bid in sc){if(!queue.some(q=>q.kind==='score'&&q.jid===jid&&q.bid===bid))state.scores[jid][bid]=sc[bid];}
+    state.comments[jid]=state.comments[jid]||{};
+    if(cm&&typeof cm==='object')for(const bid in cm){if(!queue.some(q=>q.kind==='comment'&&q.jid===jid&&q.bid===bid))state.comments[jid][bid]=cm[bid];}
+    persist();
+  }catch(e){}
+}
 async function boot(){
   app.innerHTML='<div style="padding:70px 22px;text-align:center;color:#8b96ad">設定を読み込み中…</div>';
   try{
@@ -404,7 +439,8 @@ async function boot(){
     CAPTIONS=cfg.captions;JUDGES=cfg.judges;BANDS=cfg.bands;EV=cfg.event||EV;
     DIVISIONS=cfg.divisions||[];CLASSES=cfg.classes||[];FAMILIES=cfg.families||{};PRIZE=cfg.prizeRules||[];
     state.curDiv=(DIVISIONS[0]||{}).id||null;
-    render();flush();pollShare();setInterval(pollShare,8000);setInterval(pollStatus,6000);
+    lastCfgHash=cfgHash(cfg);
+    render();flush();pollShare();setInterval(pollShare,8000);setInterval(pollStatus,6000);setInterval(pollConfig,20000);
   }catch(e){app.innerHTML='<div style="padding:60px 24px;text-align:center;color:#e8705a;line-height:1.8">設定を読み込めませんでした。<br>ネット接続を確認して再読み込みしてください。</div>';}
 }
 async function pollShare(){
@@ -458,7 +494,7 @@ function renderSelect(){
     await enterJudge(b.dataset.j);
   }));
 }
-async function enterJudge(jid){state.judgeId=jid;state.pendingJudge=null;state.pinBuf='';state.bandIndex=0;state.tab='input';await loadStatus();render();}
+async function enterJudge(jid){state.judgeId=jid;state.pendingJudge=null;state.pinBuf='';state.bandIndex=0;state.tab='input';await loadStatus();await loadMyData(jid);render();}
 function renderPin(){
   const j=judgeOf(state.pendingJudge);if(!j){state.pendingJudge=null;return render();}
   const cap=capOf(j);const n=state.pinBuf.length;
