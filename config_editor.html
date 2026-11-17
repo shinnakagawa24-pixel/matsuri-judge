@@ -82,12 +82,22 @@
   <h1 class="title">大会設定エディタ</h1>
   <p class="sub">審査員・部門・区分・賞・団体を編集し、Firebaseに保存します。保存すると、審査員ページと管理画面は次回読み込みで反映されます。<br><b style="color:var(--gold)">構成変更は大会開始前に</b>行ってください。</p>
 
+  <div class="card" style="border-color:var(--gold-dim)">
+    <h2>次の大会をはじめる <small>前の大会から構成をコピーして、団体と名前だけ差し替えると速いです</small></h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="copy-src" placeholder="コピー元イベントID（例: shonan-2026）" style="flex:1;min-width:220px">
+      <button class="btn" id="copy-btn">前の大会からコピー</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin:9px 0 0;line-height:1.6">今のイベントID：<b id="cur-event" style="color:var(--gold)"></b>　／　別の大会にするにはURLに <code>?event=新しいID</code> を付けて開きます。コピーすると現在の編集内容は置き換わります（保存するまでFirebaseのデータはそのままでOK）。</p>
+  </div>
+
   <div class="card">
     <h2>大会情報</h2>
     <div class="grid2">
       <div><label>大会名</label><input type="text" id="ev-name"></div>
       <div><label>開催日</label><input type="date" id="ev-date"></div>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer"><input type="checkbox" id="ev-test" style="width:auto;flex:0 0 auto"> <span style="color:var(--ink)">テスト用イベント（審査員・管理画面にオレンジの「TEST」バッジを表示）。本番大会ではチェックを外してください。</span></label>
   </div>
 
   <div class="card">
@@ -166,7 +176,13 @@ function esc(s){return String(s==null?'':s).replace(/"/g,'&quot;');}
 const classesOf=dv=>model.classes.filter(c=>c.division===dv);
 const awardsOf=dv=>model.awardGroups[dv]||[];
 
-function renderEvent(){$('ev-name').value=model.event.name||'';$('ev-date').value=model.event.date||'';}
+function renderEvent(){$('ev-name').value=model.event.name||'';$('ev-date').value=model.event.date||'';$('ev-test').checked=!!model.event.test;const ce=$('cur-event');if(ce)ce.textContent=FB.EVENT_ID;updateBadge();}
+let _badgeEl=null;
+function updateBadge(){
+  const show=!!(model&&model.event&&model.event.test);
+  if(show){if(!_badgeEl){_badgeEl=document.createElement('div');_badgeEl.style.cssText='position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#f5a623;color:#1a0f0c;font:600 11px Inter,system-ui,sans-serif;padding:2px 12px;border-radius:0 0 8px 8px;letter-spacing:.06em;';document.body.appendChild(_badgeEl);}_badgeEl.textContent='TEST: '+FB.EVENT_ID;}
+  else if(_badgeEl){_badgeEl.remove();_badgeEl=null;}
+}
 
 function genPin(){return String(Math.floor(1000+Math.random()*9000));}
 function renderCaps(){
@@ -277,6 +293,8 @@ function wireBands(){
 $('add-band').addEventListener('click',()=>{const d0=model.divisions[0];model.bands.push({id:uid('b'),name:'',division:d0.id,classId:(classesOf(d0.id)[0]||{}).id||'',awardGroup:(awardsOf(d0.id)[0]||''),hasCG:true});renderBands();});
 $('ev-name').addEventListener('input',e=>model.event.name=e.target.value);
 $('ev-date').addEventListener('input',e=>model.event.date=e.target.value);
+$('ev-test').addEventListener('change',e=>{model.event.test=e.target.checked;updateBadge();});
+$('copy-btn').addEventListener('click',()=>copyFrom($('copy-src').value));
 
 function renderAll(){renderEvent();renderCaps();renderDivs();renderBands();}
 
@@ -289,7 +307,7 @@ function toConfig(){
   const awardGroups={};model.divisions.forEach(d=>awardGroups[d.id]=awardsOf(d.id));
   const bands=model.bands.map((b,i)=>({id:b.id,no:i+1,name:b.name,division:b.division,classId:b.classId,awardGroup:b.awardGroup,hasCG:!!b.hasCG}));
   const prizeRules=model.classes.map(c=>({classId:c.id,gold:Number(c.gold),silver:Number(c.silver),bronze:Number(c.bronze)}));
-  return {event:{id:FB.EVENT_ID,name:model.event.name,date:model.event.date},families,captions,judges,divisions,classes,awardGroups,bands,prizeRules,updatedAt:new Date().toISOString()};
+  return {event:{id:FB.EVENT_ID,name:model.event.name,date:model.event.date,test:!!model.event.test},families,captions,judges,divisions,classes,awardGroups,bands,prizeRules,updatedAt:new Date().toISOString()};
 }
 function validate(){
   const e=[];
@@ -319,37 +337,57 @@ function migrateBand(b){
   const sz=/小/.test(b.division||'')?'small':/中/.test(b.division||'')?'mid':'big';
   return {id:b.id||uid('b'),name:b.name,division:'mb',classId:'mb_'+sz,awardGroup:'一般',hasCG:!!b.hasCG};
 }
+function cfgToModel(cfg,keepEventId){
+  const jByCap={}; (cfg.judges||[]).forEach(j=>jByCap[j.captionId]=j);
+  const prizeByClass={}; (cfg.prizeRules||[]).forEach(p=>{if(p.classId)prizeByClass[p.classId]=p;});
+  const divisions=(cfg.divisions&&cfg.divisions.length)?cfg.divisions:defaultDivisions();
+  const awardGroups=cfg.awardGroups||defaultAwardGroups();
+  const classes=(cfg.classes&&cfg.classes.length)
+    ? cfg.classes.map(c=>{const p=prizeByClass[c.id]||{};return {id:c.id,division:c.division,label:c.label,gold:p.gold!=null?p.gold:80,silver:p.silver!=null?p.silver:70,bronze:p.bronze!=null?p.bronze:60};})
+    : defaultClasses();
+  const ev=cfg.event||{name:'',date:''};
+  const m={
+    event:{id:keepEventId?FB.EVENT_ID:(ev.id||FB.EVENT_ID),name:ev.name||'',date:ev.date||'',test:!!ev.test},
+    families:cfg.families||{GE:{factor:2},Visual:{factor:1.5},Music:{factor:1.5}},
+    captions:(cfg.captions||[]).map(c=>({id:c.id,judgeId:(jByCap[c.id]||{}).id||uid('j'),family:c.family,name:c.name,fields:[c.fields?c.fields[0]:'',c.fields?c.fields[1]:''],isCG:!!c.isCG,judgeName:(jByCap[c.id]||{}).name||'',judgePin:(jByCap[c.id]||{}).pin||''})),
+    divisions, classes, awardGroups,
+    bands:(cfg.bands||[]).map(migrateBand)
+  };
+  if(!m.classes.length)m.classes=defaultClasses();
+  return m;
+}
 async function load(){
   clearLog(); log('現在の設定を読み込み中…','info');
   try{
-    const res=await fetch(cfgURL); if(!res.ok)throw new Error('HTTP '+res.status);
+    const res=await fetch(cfgURL,{cache:'no-store'}); if(!res.ok)throw new Error('HTTP '+res.status);
     const cfg=await res.json();
     if(!cfg||!cfg.captions){log('保存済み設定なし。サンプルを表示します。','warn');model=defaultModel();renderAll();return;}
-    const jByCap={}; (cfg.judges||[]).forEach(j=>jByCap[j.captionId]=j);
-    const prizeByClass={}; (cfg.prizeRules||[]).forEach(p=>{if(p.classId)prizeByClass[p.classId]=p;});
-    const divisions=(cfg.divisions&&cfg.divisions.length)?cfg.divisions:defaultDivisions();
-    const awardGroups=cfg.awardGroups||defaultAwardGroups();
-    const classes=(cfg.classes&&cfg.classes.length)
-      ? cfg.classes.map(c=>{const p=prizeByClass[c.id]||{};return {id:c.id,division:c.division,label:c.label,gold:p.gold!=null?p.gold:80,silver:p.silver!=null?p.silver:70,bronze:p.bronze!=null?p.bronze:60};})
-      : defaultClasses();
-    model={
-      event:cfg.event||{id:FB.EVENT_ID,name:'',date:''},
-      families:cfg.families||{GE:{factor:2},Visual:{factor:1.5},Music:{factor:1.5}},
-      captions:(cfg.captions||[]).map(c=>({id:c.id,judgeId:(jByCap[c.id]||{}).id||uid('j'),family:c.family,name:c.name,fields:[c.fields?c.fields[0]:'',c.fields?c.fields[1]:''],isCG:!!c.isCG,judgeName:(jByCap[c.id]||{}).name||'',judgePin:(jByCap[c.id]||{}).pin||''})),
-      divisions, classes, awardGroups,
-      bands:(cfg.bands||[]).map(migrateBand)
-    };
-    // 移行で使う区分IDが無ければ既定区分を補完
-    if(!model.classes.length)model.classes=defaultClasses();
+    model=cfgToModel(cfg,false);
     renderAll();
     log('✓ 現在の設定を読み込みました。','ok');
     if(!cfg.divisions)log('（旧形式から部門構造へ移行しました。各団体の部門・区分・特別表彰を確認してください）','warn');
   }catch(e){log('✗ 読み込み失敗：'+e.message+'（サンプル表示）','err');model=defaultModel();renderAll();}
 }
+async function copyFrom(srcId){
+  srcId=(srcId||'').trim();
+  if(!srcId){log('コピー元のイベントIDを入力してください。','warn');return;}
+  if(srcId===FB.EVENT_ID){log('コピー元が現在のイベントと同じです。別のイベントIDを指定してください。','warn');return;}
+  if(!confirm('現在の編集内容を破棄して、イベント「'+srcId+'」の設定を\nこのイベント（'+FB.EVENT_ID+'）にコピーします。\n\n※この時点ではFirebaseには保存されません（「Firebaseに保存」で確定）。\n\nよろしいですか？'))return;
+  clearLog(); log('「'+srcId+'」から設定を読み込み中…','info');
+  try{
+    const res=await fetch(`${BASE}/events/${srcId}/config.json`,{cache:'no-store'});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const cfg=await res.json();
+    if(!cfg||!cfg.captions){log('✗ イベント「'+srcId+'」に保存済みの設定が見つかりません。','err');return;}
+    model=cfgToModel(cfg,true);        // 保存先は現在のイベントに固定
+    renderAll();
+    log('✓ 「'+srcId+'」の構成をコピーしました。大会名・開催日・出場団体・審査員名を編集して「Firebaseに保存」してください。','ok');
+    log('  審査員 '+model.captions.length+'／部門 '+model.divisions.length+'／区分 '+model.classes.length+'／団体 '+model.bands.length,'info');
+  }catch(e){log('✗ コピー失敗：'+e.message,'err');}
+}
 $('save').addEventListener('click',save);
 $('reload').addEventListener('click',load);
 renderAll(); load();
 </script>
-<script>(function(){var e=new URLSearchParams(location.search).get("event");if(e&&e!=="shonan-2026"){var d=document.createElement("div");d.textContent="TEST: "+e;d.style.cssText="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#f5a623;color:#1a0f0c;font:600 11px Inter,system-ui,sans-serif;padding:2px 12px;border-radius:0 0 8px 8px;letter-spacing:.06em;";document.body.appendChild(d);document.title="[TEST] "+document.title;}})();</script>
 </body>
 </html>
