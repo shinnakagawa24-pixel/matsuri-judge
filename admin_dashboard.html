@@ -196,10 +196,76 @@
   .pinrow .pjc{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;flex:0 0 auto;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .pinrow .pjp{font-family:var(--mono);font-weight:700;font-size:17px;color:var(--gold);letter-spacing:.16em;flex:0 0 auto;}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+  /* リキャップPDFボタン */
+  .btn.recap{background:transparent;color:var(--gold);border-color:var(--gold-dim);}
+  .btn.recap:hover{background:rgba(188,0,45,.12);border-color:var(--gold);}
+  /* 進捗オーバーレイ */
+  #rcp-ov{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;background:rgba(5,5,7,.82);backdrop-filter:blur(3px);}
+  #rcp-ov.on{display:flex;}
+  #rcp-ov .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px 30px;min-width:280px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+  #rcp-ov .ti{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.04em;margin-bottom:14px;color:var(--ink);}
+  #rcp-ov .bar{height:8px;border-radius:5px;background:var(--panel-2);overflow:hidden;margin:0 0 10px;}
+  #rcp-ov .fill{height:100%;width:0;background:linear-gradient(90deg,var(--gold-dim),var(--gold));transition:width .2s;}
+  #rcp-ov .st{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  #rcp-ov .st.err{color:var(--gold);}
+  /* 印刷シート（白地・PDF用／画面外でレンダリング） */
+  #rcp-stage{position:fixed;left:-10000px;top:0;}
+  .rcp{width:794px;box-sizing:border-box;background:#fff;color:#1a2332;font-family:'Hiragino Kaku Gothic ProN','Yu Gothic','Noto Sans JP','Meiryo',sans-serif;padding:38px 40px 30px;}
+  .rcp *{box-sizing:border-box;}
+  .rcp .hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #BC002D;padding-bottom:10px;margin-bottom:4px;}
+  .rcp .ev{font-size:14px;font-weight:700;letter-spacing:.04em;color:#444;}
+  .rcp .ev .dt{font-weight:400;color:#888;margin-left:8px;font-size:12px;}
+  .rcp .rt{font-family:Oswald,sans-serif;font-weight:700;font-size:20px;letter-spacing:.14em;text-transform:uppercase;color:#BC002D;}
+  .rcp .meta{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:14px 0 4px;}
+  .rcp .meta .no{font-family:'Roboto Mono',monospace;font-weight:700;font-size:15px;color:#BC002D;border:1.5px solid #BC002D;border-radius:7px;padding:1px 8px;}
+  .rcp .meta .bn{font-size:24px;font-weight:700;letter-spacing:.01em;}
+  .rcp .meta .tag{font-size:11px;color:#555;background:#f1f1f4;border-radius:5px;padding:2px 8px;letter-spacing:.03em;}
+  .rcp .summary{display:flex;gap:10px;margin:14px 0 16px;}
+  .rcp .sm{flex:1;border:1px solid #e3e3e8;border-radius:12px;padding:10px 14px;text-align:center;}
+  .rcp .sm .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#888;}
+  .rcp .sm .v{font-family:'Roboto Mono',monospace;font-weight:700;font-size:26px;color:#1a2332;line-height:1.1;margin-top:2px;}
+  .rcp .sm.final{background:#BC002D;border-color:#BC002D;}
+  .rcp .sm.final .k{color:#f4c9d2;}
+  .rcp .sm.final .v{color:#fff;}
+  .rcp .sm .u{font-size:13px;font-weight:400;color:#aaa;margin-left:2px;}
+  .rcp .sm.final .u{color:#f4c9d2;}
+  .rcp .prizeb{display:inline-block;font-weight:700;font-size:15px;padding:3px 10px;border-radius:7px;}
+  .rcp .prizeb.gold{background:#f3c969;color:#5a3d00;}
+  .rcp .prizeb.silver{background:#d8dce1;color:#3a3f47;}
+  .rcp .prizeb.bronze{background:#e0b088;color:#4a2a10;}
+  .rcp .prizeb.none{background:#f1f1f4;color:#999;}
+  .rcp .fams{display:flex;flex-direction:column;gap:9px;margin-top:6px;}
+  .rcp .fam{border:1px solid #e3e3e8;border-radius:11px;overflow:hidden;}
+  .rcp .fam .fh{display:flex;justify-content:space-between;align-items:center;padding:7px 14px;}
+  .rcp .fam.ge .fh{background:#fceacb;}
+  .rcp .fam.vis .fh{background:#d2eae6;}
+  .rcp .fam.mus .fh{background:#dce1f2;}
+  .rcp .fam .fn{font-family:Oswald,sans-serif;font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#333;}
+  .rcp .fam .fs{font-family:'Roboto Mono',monospace;font-weight:700;font-size:17px;color:#1a2332;}
+  .rcp .fam .fs small{font-size:11px;font-weight:400;color:#888;margin-left:6px;}
+  .rcp .fam .jr{display:flex;justify-content:space-between;align-items:center;padding:5px 14px;border-top:1px solid #f0f0f3;font-size:13px;}
+  .rcp .fam .jr.muted{color:#b0b0b8;}
+  .rcp .fam .jr .jn{font-weight:500;}
+  .rcp .fam .jr .jv{font-family:'Roboto Mono',monospace;}
+  .rcp .fam .jr .jv .eq{font-weight:700;margin-left:8px;color:#BC002D;}
+  .rcp .fam .jr.muted .jv .eq{color:#b0b0b8;}
+  .rcp .fam .fnote{font-size:10px;color:#999;padding:4px 14px 8px;}
+  .rcp .totals{display:flex;gap:8px;margin-top:12px;}
+  .rcp .totals .t{flex:1;text-align:center;border:1px solid #e3e3e8;border-radius:10px;padding:8px;}
+  .rcp .totals .t .k{font-size:10px;color:#888;letter-spacing:.06em;}
+  .rcp .totals .t .v{font-family:'Roboto Mono',monospace;font-weight:700;font-size:18px;color:#1a2332;}
+  .rcp .cmts{margin-top:14px;border-top:1px solid #e3e3e8;padding-top:10px;}
+  .rcp .cmts .ch{font-family:Oswald,sans-serif;font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#888;margin-bottom:6px;}
+  .rcp .cmts .cr{display:flex;gap:10px;margin-bottom:5px;font-size:12px;}
+  .rcp .cmts .cr .cn{font-weight:700;flex:0 0 90px;color:#555;}
+  .rcp .cmts .cr .cc{flex:1;color:#333;line-height:1.5;white-space:pre-wrap;}
+  .rcp .ft{display:flex;justify-content:space-between;margin-top:16px;padding-top:8px;border-top:1px solid #eee;font-size:9px;color:#aaa;letter-spacing:.03em;}
 </style>
 </head>
 <body>
 <div class="wrap" id="wrap"></div>
+<div id="rcp-stage"></div>
+<div id="rcp-ov"><div class="card"><div class="ti">リキャップPDFを生成中…</div><div class="bar"><div class="fill" id="rcp-fill"></div></div><div class="st" id="rcp-st">準備中…</div></div></div>
 
 <script>
 /* ===================== 設定（一般部門） ===================== */
@@ -439,9 +505,9 @@ function render(){
     ${pinsHTML()}
     <div class="toolbar">
       ${lockNote}
-      <button class="btn ${dlCls}" id="exp-csv" ${dlAttr}><span class="ic">CSV</span> データ出力</button>
       <button class="btn ${dlCls}" id="exp-media" ${dlAttr}><span class="ic">MEDIA</span> メディアCSV</button>
       <button class="btn excel ${dlCls}" id="exp-xlsx" ${dlAttr}><span class="ic">XLSX</span> Excel出力（印刷用）</button>
+      <button class="btn recap ${dlCls}" id="exp-recap" ${dlAttr}><span class="ic">PDF</span> リキャップPDF（団体別・ZIP）</button>
     </div>
     <div class="table-scroll">
       <table>
@@ -503,9 +569,9 @@ function render(){
   wrap.querySelectorAll('[data-mdel]').forEach(b=>b.addEventListener('click',()=>{MANUAL_AWARDS.splice(+b.dataset.mdel,1);render();}));
   const madd=wrap.querySelector('#madd'); if(madd)madd.addEventListener('click',()=>{MANUAL_AWARDS.push({name:'',recipient:''});render();});
   const msave=wrap.querySelector('#msave'); if(msave)msave.addEventListener('click',saveManual);
-  const bcsv=wrap.querySelector('#exp-csv'); if(bcsv&&!bcsv.disabled)bcsv.addEventListener('click',exportCSV);
   const bmed=wrap.querySelector('#exp-media'); if(bmed&&!bmed.disabled)bmed.addEventListener('click',exportMediaCSV);
   const bxls=wrap.querySelector('#exp-xlsx'); if(bxls&&!bxls.disabled)bxls.addEventListener('click',exportXLSX);
+  const brcp=wrap.querySelector('#exp-recap'); if(brcp&&!brcp.disabled)brcp.addEventListener('click',exportRecapPDFs);
   wrap.querySelectorAll('.ed').forEach(inp=>{
     inp.addEventListener('click',e=>e.stopPropagation());
     inp.addEventListener('change',()=>{
@@ -550,6 +616,113 @@ function detailHTML(r){
   const cmts=JUDGES.map(j=>{const c=COMMENTS[j.id]&&COMMENTS[j.id][r.band.id];return c?{name:j.name,c}:null;}).filter(Boolean);
   const cmtHTML=cmts.length?`<div class="cmts"><div class="cmts-h">コメント</div>${cmts.map(x=>`<div class="cmt-row"><span class="cn">${x.name}</span><span class="cc">${String(x.c).replace(/</g,'&lt;')}</span></div>`).join('')}</div>`:'';
   return grid+cmtHTML;
+}
+
+/* ===================== リキャップPDF（団体別・ZIP） ===================== */
+const RCP_LIBS=[
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'
+];
+function rcpLoadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('読み込み失敗: '+src));document.head.appendChild(s);});}
+async function ensureRcpLibs(){
+  if(!(window.jspdf&&window.jspdf.jsPDF))await rcpLoadScript(RCP_LIBS[0]);
+  if(!window.html2canvas)await rcpLoadScript(RCP_LIBS[1]);
+  if(!window.JSZip)await rcpLoadScript(RCP_LIBS[2]);
+}
+function rcpOv(on){const o=document.getElementById('rcp-ov');if(o)o.classList.toggle('on',on);}
+function rcpProg(done,total,msg,err){const f=document.getElementById('rcp-fill');if(f)f.style.width=(total?Math.round(done/total*100):0)+'%';const st=document.getElementById('rcp-st');if(st){st.textContent=msg;st.classList.toggle('err',!!err);}}
+const rcpSafe=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'_').replace(/\s+/g,' ').trim().slice(0,60)||'無題';
+function recapSheetHTML(r){
+  const he=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const b=r.band, cls=(classById(b.classId)||{}).label||'', prize=prizeOf(b,r.final);
+  const mx=fam=>Math.round(20*(FACTOR[fam]||0));
+  const fams=[
+    {k:'GE',c:'ge',label:'General Effect',sub:r.efc,rank:r.efcRank,note:`平均 × ${FACTOR.GE} = /${mx('GE')}`},
+    {k:'Visual',c:'vis',label:'Visual',sub:r.vis,rank:r.visRank,note:r.hasCG?`視覚 平均 × ${FACTOR.Visual} = /${mx('Visual')}`:`CG無 → Analysis のみ平均 × ${FACTOR.Visual}`},
+    {k:'Music',c:'mus',label:'Music',sub:r.mus,rank:r.musRank,note:`平均 × ${FACTOR.Music} = /${mx('Music')}`}
+  ];
+  const famHTML=fams.map(f=>{
+    const rows=CAPTIONS.filter(c=>c.family===f.k).map(cap=>{
+      const j=judgeByCap(cap.id); if(!j)return '';
+      const t=jTtl(j.id,b.id), rv=rawVals(j.id,b.id);
+      const counted=(f.k!=='Visual')||r.hasCG||!cap.isCG;
+      const v0=(rv&&rv[0]!=null)?rv[0]:'–', v1=(rv&&rv[1]!=null)?rv[1]:'–';
+      return `<div class="jr ${counted?'':'muted'}"><span class="jn">${he(j.name)}</span><span class="jv">${v0} / ${v1}<span class="eq">→ ${t!=null?t.toFixed(2):'–'}</span></span></div>`;
+    }).join('');
+    return `<div class="fam ${f.c}"><div class="fh"><span class="fn">${f.label}</span><span class="fs">${f2(f.sub)}<small>${f.rank}位</small></span></div>${rows}<p class="fnote">${f.note}</p></div>`;
+  }).join('');
+  const cmts=JUDGES.map(j=>{const c=COMMENTS[j.id]&&COMMENTS[j.id][b.id];return c?{name:j.name,c}:null;}).filter(Boolean);
+  const cmtHTML=cmts.length?`<div class="cmts"><div class="ch">コメント</div>${cmts.map(x=>`<div class="cr"><span class="cn">${he(x.name)}</span><span class="cc">${he(x.c)}</span></div>`).join('')}</div>`:'';
+  const tags=[divName(b.division),cls,r.hasCG?'CG有':'CG無',b.awardGroup?('特別表彰: '+b.awardGroup):''].filter(Boolean).map(t=>`<span class="tag">${he(t)}</span>`).join('');
+  return `<div class="hd"><span class="ev">${he(EVENT.name||'Marching Matsuri')}${EVENT.date?`<span class="dt">${he(EVENT.date)}</span>`:''}</span><span class="rt">Recap</span></div>
+    <div class="meta"><span class="no">No.${String(b.no).padStart(2,'0')}</span><span class="bn">${he(b.name)}</span></div>
+    <div class="meta" style="margin-top:2px">${tags}</div>
+    <div class="summary">
+      <div class="sm"><div class="k">総合順位</div><div class="v">${r.finalRank}<span class="u">位</span></div></div>
+      <div class="sm final"><div class="k">Final</div><div class="v">${f3(r.final)}</div></div>
+      <div class="sm"><div class="k">賞</div><div class="v" style="font-size:18px;padding-top:7px"><span class="prizeb ${prize.cls}">${prize.label}</span></div></div>
+    </div>
+    <div class="fams">${famHTML}</div>
+    <div class="totals">
+      <div class="t"><div class="k">Sub Ttl.</div><div class="v">${f2(r.sub)}</div></div>
+      <div class="t"><div class="k">Pen.</div><div class="v">${r.pen?('-'+r.pen):'0'}</div></div>
+      <div class="t"><div class="k">Final</div><div class="v">${f2(r.final)}</div></div>
+    </div>
+    ${cmtHTML}
+    <div class="ft"><span>Ttl=(①+②)/10　Efc=GE平均×${FACTOR.GE}　Vis=視覚平均×${FACTOR.Visual}　Mus=音楽平均×${FACTOR.Music}　Final=Sub−Pen</span><span>FormaSyncM™ · ${new Date().toLocaleString('ja-JP')}</span></div>`;
+}
+function collectRecapItems(){
+  const items=[];
+  DIVISIONS.forEach(d=>{
+    const db=BANDS.filter(b=>b.division===d.id);
+    if(!db.length)return;
+    const rs=db.map(bandResult);
+    const fr=rankBy(rs,x=>x.final),er=rankBy(rs,x=>x.efc||0),vr=rankBy(rs,x=>x.vis||0),mr=rankBy(rs,x=>x.mus||0);
+    rs.forEach((r,i)=>{r.finalRank=fr[i];r.efcRank=er[i];r.visRank=vr[i];r.musRank=mr[i];});
+    rs.slice().sort((a,b)=>a.band.no-b.band.no).forEach(r=>items.push(r));
+  });
+  return items;
+}
+async function exportRecapPDFs(){
+  rcpOv(true); rcpProg(0,1,'ライブラリを読み込み中…');
+  try{
+    await ensureRcpLibs();
+    const {jsPDF}=window.jspdf;
+    const zip=new window.JSZip();
+    const stage=document.getElementById('rcp-stage');
+    const items=collectRecapItems();
+    if(!items.length){rcpProg(0,0,'出力対象の団体がありません',true);setTimeout(()=>rcpOv(false),1800);return;}
+    const total=items.length;
+    for(let i=0;i<items.length;i++){
+      const r=items[i];
+      rcpProg(i,total,`${i+1} / ${total}　${r.band.name}`);
+      const el=document.createElement('div'); el.className='rcp'; el.innerHTML=recapSheetHTML(r);
+      stage.appendChild(el);
+      await new Promise(rs=>setTimeout(rs,0));
+      const canvas=await window.html2canvas(el,{scale:2,backgroundColor:'#ffffff'});
+      stage.removeChild(el);
+      const img=canvas.toDataURL('image/jpeg',0.9);
+      const pdf=new jsPDF({unit:'pt',format:'a4',compress:true});
+      const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
+      const m=26; let iw=pw-m*2, ih=iw*canvas.height/canvas.width; const maxH=ph-m*2;
+      if(ih>maxH){const s=maxH/ih;ih=maxH;iw=iw*s;}
+      pdf.addImage(img,'JPEG',(pw-iw)/2,m,iw,ih);
+      zip.file(`${String(r.band.no).padStart(2,'0')}_${rcpSafe(r.band.name)}_リキャップ.pdf`,pdf.output('blob'));
+    }
+    rcpProg(total,total,'ZIPファイルを作成中…');
+    const zb=await zip.generateAsync({type:'blob'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(zb);
+    a.download=`リキャップ_${rcpSafe(EVENT.name||'event')}.zip`;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+    rcpProg(total,total,`完了：${total}団体のPDFをZIPでダウンロードしました`);
+    setTimeout(()=>rcpOv(false),1800);
+  }catch(e){
+    rcpProg(0,1,'エラー：'+((e&&e.message)||e)+' ／ ネット接続を確認して再実行してください',true);
+    setTimeout(()=>rcpOv(false),3600);
+  }
 }
 
 /* ===================== 全スコア一覧（手動編集） ===================== */
@@ -980,8 +1153,14 @@ async function saveManual(){
   }catch(e){ btn.textContent='✗ 通信エラー'; }
   setTimeout(()=>{const b=wrap.querySelector('#msave');if(b)b.textContent='保存';},1600);
 }
+let _tb=null;
+function showTestBadge(on){
+  if(on){if(!_tb){_tb=document.createElement('div');_tb.style.cssText='position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#f5a623;color:#1a0f0c;font:600 11px Inter,system-ui,sans-serif;padding:2px 12px;border-radius:0 0 8px 8px;letter-spacing:.06em;';document.body.appendChild(_tb);}_tb.textContent='TEST: '+FB.EVENT_ID;if(!/^\[TEST\] /.test(document.title))document.title='[TEST] '+document.title;}
+  else if(_tb){_tb.remove();_tb=null;document.title=document.title.replace(/^\[TEST\] /,'');}
+}
 function applyCfg(cfg){
   EVENT=cfg.event||EVENT; CAPTIONS=cfg.captions; JUDGES=cfg.judges; BANDS=cfg.bands;
+  showTestBadge(!!(EVENT&&EVENT.test));
   if(cfg.families){['GE','Visual','Music'].forEach(f=>{if(cfg.families[f]&&cfg.families[f].factor!=null)FACTOR[f]=Number(cfg.families[f].factor);});}
   DIVISIONS=(cfg.divisions&&cfg.divisions.length)?cfg.divisions:[{id:'mb',name:'MB部門'}];
   CLASSES=cfg.classes||[]; AWARD_GROUPS=cfg.awardGroups||{};
@@ -1015,7 +1194,5 @@ async function boot(){
   }
 }
 boot();
-</script>
-<script>(function(){var e=new URLSearchParams(location.search).get("event");if(e&&e!=="shonan-2026"){var d=document.createElement("div");d.textContent="TEST: "+e;d.style.cssText="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#f5a623;color:#1a0f0c;font:600 11px Inter,system-ui,sans-serif;padding:2px 12px;border-radius:0 0 8px 8px;letter-spacing:.06em;";document.body.appendChild(d);document.title="[TEST] "+document.title;}})();</script>
-</body>
+</script></body>
 </html>
