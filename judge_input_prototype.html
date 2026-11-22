@@ -357,28 +357,40 @@ function isCGJudge(){const c=capOf(judgeOf(state.judgeId));return !!(c&&c.isCG);
 function bandLocked(band){return isCGJudge() && band && band.hasCG===false;}
 
 /* ===================== sync queue (score + comment) ===================== */
-let queue=lsGet(LS.queue,[]),syncing=false;
+let dirty=lsGet(LS.queue,{}),syncing=false;
+if(Array.isArray(dirty)){const m={};dirty.forEach(q=>{if(q&&q.kind)m[q.kind+'|'+q.jid+'|'+q.bid]={kind:q.kind,jid:q.jid,bid:q.bid};});dirty=m;lsSet(LS.queue,dirty);}
+const dkey=(kind,jid,bid)=>kind+'|'+jid+'|'+bid;
 function persist(){lsSet(LS.scores,state.scores);lsSet(LS.comments,state.comments);}
-function enqueue(kind,jid,bid){queue=queue.filter(q=>!(q.kind===kind&&q.jid===jid&&q.bid===bid));queue.push({kind,jid,bid});lsSet(LS.queue,queue);updateSync();flush();}
+/* (kind|jid|bid)ごとに「未同期」フラグだけを持つ。送信直前に state から最新値を読むので、
+   通信が遅い間に入力が進んでも、送信中に値が変われば必ず送り直し、Firebaseには常に最新＝完全な値が入る。
+   入力が落ち着いてから送る（450ms デバウンス）ので、管理画面に途中の桁が映らない。*/
+let flushT=null;
+function enqueue(kind,jid,bid){dirty[dkey(kind,jid,bid)]={kind,jid,bid};lsSet(LS.queue,dirty);updateSync();scheduleFlush();}
+function scheduleFlush(){clearTimeout(flushT);flushT=setTimeout(flush,450);}
 async function flush(){
-  if(syncing||!queue.length)return;syncing=true;
-  while(queue.length){
-    const it=queue[0];
-    try{
+  clearTimeout(flushT);
+  if(syncing)return;syncing=true;
+  try{
+    let keys=Object.keys(dirty);
+    while(keys.length){
+      const key=keys[0],it=dirty[key];
+      delete dirty[key];lsSet(LS.queue,dirty);              // 送信前に外す→送信中に再入力されれば再登録される
       let url,val;
       if(it.kind==='score'){url=scoreURL(it.jid,it.bid);val=(state.scores[it.jid]&&state.scores[it.jid][it.bid])||null;}
       else{url=commentURL(it.jid,it.bid);val=(state.comments[it.jid]&&state.comments[it.jid][it.bid])||null;}
-      const res=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(val)});
-      if(!res.ok)throw 0;
-      queue.shift();lsSet(LS.queue,queue);updateSync();
-    }catch(e){updateSync();break;}
-  }
-  syncing=false;
+      try{
+        const res=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(val)});
+        if(!res.ok)throw 0;
+      }catch(e){dirty[key]=it;lsSet(LS.queue,dirty);updateSync();break;}  // 失敗分は残して再試行
+      updateSync();
+      keys=Object.keys(dirty);                               // 送信中に増えた分（最新値）も続けて送る
+    }
+  }finally{syncing=false;}
 }
-setInterval(()=>{if(queue.length)flush();},4000);
+setInterval(()=>{if(Object.keys(dirty).length)flush();},4000);
 window.addEventListener('online',flush);
-function updateSync(){const el=document.getElementById('syncpill');if(!el)return;
-  if(queue.length){el.className='pill wait';el.textContent='送信待ち '+queue.length;}else{el.className='pill ok';el.textContent='同期済み';}}
+function updateSync(){const el=document.getElementById('syncpill');if(!el)return;const n=Object.keys(dirty).length;
+  if(n){el.className='pill wait';el.textContent='送信待ち '+n;}else{el.className='pill ok';el.textContent='同期済み';}}
 
 /* ===================== scoring helpers ===================== */
 function entry(jid,bid){return (state.scores[jid]&&state.scores[jid][bid])||{};}
@@ -701,7 +713,7 @@ function toggleDecide(){
     return;
   }
   if(!confirm('スコアを決定します。\n決定後は点数を変更できません（修正は運営にリクエストが必要です）。\n\nよろしいですか？'))return;
-  state.decided=true;state.editRequest=false;putStatus();render();}
+  state.decided=true;state.editRequest=false;flush();putStatus();render();}
 
 function renderRanking(){
   const judge=judgeOf(state.judgeId);const shared=state.shareState==='shared';
